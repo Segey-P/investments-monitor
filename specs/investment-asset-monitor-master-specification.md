@@ -26,3 +26,15 @@ The Integrated Investment & Asset Monitor is a locally-hosted financial manageme
 * **Local Encryption:** (Optional/Future) Encrypt the SQLite database file.  
 * **Manual Overrides:** Allow users to manually adjust prices or values for assets where API data is unavailable.
 
+### 4.1 Mobile Access — Design Tension (2026-04-17)
+
+The cloud-first workflow (mobile-accessible dashboards) conflicts with the Zero-Cloud Storage rule above. Three resolution paths — user decision required before implementation:
+
+| Path | Summary | Tradeoff |
+|---|---|---|
+| A. Keep local-only | Dashboard runs on Mac; access remotely via Tailscale or Cloudflare Tunnel | Mac must be on; most private |
+| B. Cloud with encrypted payload | Push encrypted SQLite to private GitHub repo or Turso; decrypt in-browser with password | Data leaves machine but is opaque at rest |
+| C. Tiered exposure | Summary-only (net worth total, % allocation) on Streamlit Cloud; detailed holdings stay local | Balanced; some mobile utility, sensitive data stays home |
+
+Recommendation (pending user input): **Path C** for v1.
+
