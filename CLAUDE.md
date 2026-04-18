@@ -28,6 +28,8 @@
 3. No unnecessary dependencies — keep the stack minimal.
 4. No comments explaining *what* code does — only *why*.
 5. No premature abstractions.
+6. Keep `TODO.md` updated with relevant next actions throughout the session.
+7. Update specs in `specs/` at the end of every session and after any major change in requirements or behaviour.
 
 ## TODO.md Convention
 
