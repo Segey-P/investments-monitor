@@ -427,32 +427,45 @@ function CockpitV2() {
       </div>
 
       {/* Main content: two columns */}
-      {/* Left col: allocation + leverage */}
+      {/* Left col: multi-dim allocation */}
       <Box x={12} y={162} w={340} h={240} fill="#181818" stroke="#333" strokeW={1}>
-        <T x={10} y={8} size={12} color="#aaa" weight={600}>Allocation by account</T>
+        <T x={10} y={8} size={12} color="#aaa" weight={600}>Allocation</T>
+        {/* Dimension pills */}
+        <div style={{ position:'absolute', left:10, top:28, display:'flex', gap:6 }}>
+          {[['Account',true],['Asset class',false],['Country',false],['Currency',false]].map(([lbl,active])=>(
+            <div key={lbl} style={{ padding:'1px 8px', fontFamily:WF.font, fontSize:10,
+              border:`1px solid ${active?'#60a5fa':'#444'}`, borderRadius:10,
+              background: active?'#1d3561':'transparent',
+              color: active?'#60a5fa':'#777' }}>{lbl}</div>
+          ))}
+        </div>
         {/* Stacked bar */}
-        <div style={{ position:'absolute', left:10, top:32, right:10, height:24, display:'flex', borderRadius:3, overflow:'hidden' }}>
+        <div style={{ position:'absolute', left:10, top:58, right:10, height:24, display:'flex', borderRadius:3, overflow:'hidden' }}>
           {[['#3b82f6',38],['#10b981',24],['#f59e0b',28],['#a78bfa',10]].map(([c,w],i)=>(
             <div key={i} style={{ width:`${w}%`, background:c, opacity:0.7 }}/>
           ))}
         </div>
-        <div style={{ position:'absolute', left:10, top:60, display:'flex', gap:12, flexWrap:'wrap' }}>
+        <div style={{ position:'absolute', left:10, top:88, display:'flex', gap:12, flexWrap:'wrap' }}>
           {[['#3b82f6','RRSP 38%'],['#10b981','TFSA 24%'],['#f59e0b','Unreg. 28%'],['#a78bfa','Crypto 10%']].map(([c,lbl])=>(
             <div key={lbl} style={{ display:'flex', alignItems:'center', gap:4, fontFamily:WF.font, fontSize:11, color:'#aaa' }}>
               <div style={{ width:8, height:8, background:c, borderRadius:1 }}/>{lbl}
             </div>
           ))}
         </div>
-        <Line x={8} y={84} w={322} stroke="#2a2a2a"/>
-        <T x={10} y={92} size={12} color="#aaa" weight={600}>Leverage trend (90d)</T>
-        {/* Sparkline */}
-        <svg width={320} height={100} style={{ position:'absolute', top:112, left:10 }}>
-          <polyline points="0,70 40,60 80,72 120,55 160,48 200,52 240,44 280,38 320,42"
-            fill="none" stroke="#60a5fa" strokeWidth={2}/>
-          <line x1={0} y1={50} x2={320} y2={50} stroke="#444" strokeWidth={1} strokeDasharray="4,4"/>
-          <text x={4} y={48} fontSize={9} fontFamily="Caveat" fill="#60a5fa">1.5× caution</text>
-          <text x={270} y={38} fontSize={10} fontFamily="Caveat" fill="#e5e7eb">1.42×</text>
-        </svg>
+        <Line x={8} y={130} w={322} stroke="#2a2a2a"/>
+        <T x={10} y={138} size={11} color="#555" italic>Switch dimension via pills above · same numbers, different cut</T>
+        {/* Example alt-dimension preview */}
+        <T x={10} y={158} size={11} color="#aaa" weight={600}>Asset class preview (inactive)</T>
+        <div style={{ position:'absolute', left:10, top:176, right:10, height:14, display:'flex', borderRadius:2, overflow:'hidden', opacity:0.4 }}>
+          {[['#64748b',4],['#3b82f6',45],['#10b981',35],['#ef4444',6],['#a78bfa',10]].map(([c,w],i)=>(
+            <div key={i} style={{ width:`${w}%`, background:c }}/>
+          ))}
+        </div>
+        <div style={{ position:'absolute', left:10, top:196, display:'flex', gap:8, flexWrap:'wrap', opacity:0.5 }}>
+          {['Cash 4%','Stocks 45%','ETFs 35%','Lev.ETF 6%','Crypto 10%'].map(lbl=>(
+            <span key={lbl} style={{ fontFamily:WF.font, fontSize:10, color:'#777' }}>{lbl}</span>
+          ))}
+        </div>
       </Box>
 
       {/* Mid: HELOC what-if */}
@@ -789,7 +802,7 @@ function HelocScreen() {
 
       {/* KPI row */}
       {[['HELOC limit','$150,000','cloud'],['Drawn','$94,000','cloud'],['Available','$56,000','cloud'],
-        ['Rate','6.95% p.a.','local'],['Monthly int.','$487','local'],['Tax-ded. YTD','$1,620','local'],['Leverage','1.42×','cloud']].map(([lbl,val,priv],i)=>(
+        ['Rate','6.95% p.a.','local'],['Monthly int.','$487','local'],['Leverage','1.42×','cloud']].map(([lbl,val,priv],i)=>(
         <div key={lbl} style={{ position:'absolute', left:8+i*127, top:48, width:120, height:60,
           background:WF.bg, border:`1.5px solid ${WF.line}`, borderRadius:2, padding:'4px 8px' }}>
           <div style={{ fontFamily:WF.font, fontSize:9, color:WF.textFaint }}>{lbl}
@@ -807,28 +820,25 @@ function HelocScreen() {
         <div style={{ position:'absolute', left:0, top:26, right:0, height:18,
           background:WF.fill, display:'flex', padding:'0 8px', fontFamily:WF.font, fontSize:10, color:WF.textFaint, alignItems:'center' }}>
           <span style={{ flex:1 }}>Date</span><span style={{ flex:1 }}>Amount</span>
-          <span style={{ flex:1.5 }}>Purpose</span><span style={{ flex:1, textAlign:'right' }}>Tax-ded.</span>
+          <span style={{ flex:2 }}>Purpose (free-text)</span>
         </div>
         {[
-          ['2026-01-15','+$30,000','Buy MSFT (unreg.)','Yes'],
-          ['2026-02-03','+$25,000','Buy ENB.TO (unreg.)','Yes'],
-          ['2026-03-08','+$20,000','Home reno (kitchen)','No'],
-          ['2026-03-22','-$5,000','Partial repayment','—'],
-          ['2026-04-01','+$24,000','Buy RY.TO (unreg.)','Yes'],
-        ].map(([dt,amt,pur,td],i)=>(
+          ['2026-01-15','+$30,000','Buy MSFT (unreg.)'],
+          ['2026-02-03','+$25,000','Buy ENB.TO (unreg.)'],
+          ['2026-03-08','+$20,000','Home reno (kitchen)'],
+          ['2026-03-22','-$5,000','Partial repayment'],
+          ['2026-04-01','+$24,000','Buy RY.TO (unreg.)'],
+        ].map(([dt,amt,pur],i)=>(
           <div key={dt} style={{ position:'absolute', left:0, top:44+i*32, right:0, height:30,
             display:'flex', alignItems:'center', padding:'0 8px',
             background: i%2===0 ? 'transparent' : WF.bg2,
             fontFamily:WF.font, fontSize:12 }}>
             <span style={{ flex:1, color:WF.textFaint }}>{dt}</span>
             <span style={{ flex:1, color: amt.startsWith('+') ? '#059669' : '#dc2626', fontWeight:600 }}>{amt}</span>
-            <span style={{ flex:1.5 }}>{pur}</span>
-            <span style={{ flex:1, textAlign:'right',
-              color: td==='Yes'?'#059669':td==='No'?'#dc2626':WF.textFaint }}>
-              {td==='Yes'?'● Yes':td==='No'?'■ No':'—'}</span>
+            <span style={{ flex:2 }}>{pur}</span>
           </div>
         ))}
-        <T x={8} y={205} size={10} color={WF.textFaint} italic>✓ = invested in income-producing assets = deductible interest</T>
+        <T x={8} y={205} size={10} color={WF.textFaint} italic>Tax-deductibility handled externally — not computed in app</T>
       </Box>
 
       {/* Leverage trend chart */}
@@ -887,25 +897,27 @@ function HelocScreen() {
         <T x={8} y={192} size={10} color="#92400e" italic>Annotation: assumes rate stays at 6.95%</T>
       </Box>
 
-      {/* Interest deductibility summary */}
+      {/* HELOC summary (no tax-deductibility) */}
       <Box x={396} y={346} w={496} h={200} fill={WF.bg} stroke={WF.line}>
-        <T x={8} y={6} size={12} weight={700}>Interest deductibility summary</T>
-        <T x={8} y={26} size={11} color={WF.textFaint}>CRA: interest on money borrowed to earn income = deductible</T>
-        {/* Bar breakdown */}
-        <svg width={470} height={100} style={{ position:'absolute', top:44, left:12 }}>
-          <rect x={0} y={20} width={340} height={24} fill={WF.fillGreen} rx={2}/>
-          <rect x={340} y={20} width={100} height={24} fill={WF.fillRed} rx={2}/>
-          <rect x={0} y={20} width={440} height={24} fill="none" stroke={WF.lineFaint} rx={2} strokeWidth={1}/>
-          <text x={4} y={36} fontSize={11} fontFamily="Caveat" fill="#059669">$1,620 deductible (77%)</text>
-          <text x={344} y={36} fontSize={11} fontFamily="Caveat" fill="#dc2626">$480 (23%)</text>
-          <text x={0} y={60} fontSize={10} fontFamily="Caveat" fill="#059669">← Invested in unregistered income-producing assets</text>
-          <text x={330} y={60} fontSize={10} fontFamily="Caveat" fill="#dc2626">← Home reno</text>
-          <text x={0} y={80} fontSize={11} fontFamily="Caveat" fill={WF.textFaint}>YTD total interest paid: $2,100</text>
-          <text x={200} y={80} fontSize={11} fontFamily="Caveat" fill={WF.textFaint}>Est. tax saving (40%): $648</text>
-        </svg>
-        <T x={8} y={150} size={11} color={WF.textFaint} italic>Assumption: mixed-use HELOC; proportion tracked per drawdown</T>
-        <T x={8} y={168} size={10} color="#059669" weight={600}>● Recommend keeping a paper trail per draw (logged in ledger above)</T>
-        <T x={8} y={184} size={10} color={WF.textFaint} italic>Not tax advice. Consult your CPA.</T>
+        <T x={8} y={6} size={12} weight={700}>HELOC at a glance</T>
+        <T x={8} y={26} size={11} color={WF.textFaint}>Leverage-only view. Tax treatment handled externally.</T>
+        {[
+          ['HELOC limit', '$150,000'],
+          ['Drawn', '$94,000 (62%)'],
+          ['Available', '$56,000'],
+          ['Annual rate', '6.95% p.a.'],
+          ['Monthly interest', '$487'],
+          ['Annualized interest', '$5,844'],
+          ['Leverage ratio', '1.42× (Safe zone)'],
+        ].map(([lbl,val],i)=>(
+          <div key={lbl} style={{ position:'absolute', left:8, top:50+i*19, right:8,
+            display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:12,
+            borderBottom: i<6 ? `1px solid ${WF.fill}` : 'none', paddingBottom:2 }}>
+            <span style={{ color:WF.textFaint }}>{lbl}</span>
+            <span style={{ fontWeight:600 }}>{val}</span>
+          </div>
+        ))}
+        <T x={8} y={188} size={10} color={WF.textFaint} italic>Per-drawdown tax flagging removed from v0.1 scope</T>
       </Box>
     </div>
   );
@@ -1318,21 +1330,99 @@ function LoginScreen() {
   );
 }
 
+// ─── SCREEN 7: Settings ───────────────────────────────────────────────────────
+
+function SettingsScreen() {
+  const W = 900, H = 560;
+  const sections = [
+    { title:'Security', rows:[
+      ['Password','••••••••',' [Change…]','local'],
+      ['Session timeout','15 min','↕','local'],
+    ]},
+    { title:'HELOC', rows:[
+      ['HELOC rate','6.95% p.a.','✎','local'],
+      ['HELOC limit','$150,000','✎','local'],
+    ]},
+    { title:'Refresh', rows:[
+      ['Scheduled refresh','Enabled','toggle ●','local'],
+      ['Interval','Every 4h (market hrs)','↕','local'],
+      ['Last refresh','Apr 22, 2026  14:32 PT','—','local'],
+      ['Manual refresh','','[Refresh now]','local'],
+    ]},
+    { title:'FX', rows:[
+      ['Source','Bank of Canada (daily)','(read-only)','local'],
+      ['Current rate','1 USD = 1.37 CAD','↗ chart','cloud'],
+      ['Fetched','Apr 22, 2026','—','local'],
+    ]},
+    { title:'Imports', rows:[
+      ['questrade_rrsp_2026-04-23.csv','3 positions','[Import]','local'],
+      ['questrade_tfsa_2026-04-23.csv','5 positions','[Import]','local'],
+      ['questrade_unreg_2026-04-23.csv','4 positions','[Import]','local'],
+    ]},
+    { title:'Public summary (Path C)', rows:[
+      ['Payload','public/summary.json','(view)','cloud'],
+      ['Last regen','Apr 22, 2026  14:32 PT','—','cloud'],
+      ['Regenerate now','','[Regenerate + push]','cloud'],
+    ]},
+    { title:'About', rows:[
+      ['Version','v0.1.0','—','—'],
+      ['Branch','main','—','—'],
+      ['Last commit','abc1234 · Apr 22','—','—'],
+    ]},
+  ];
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:'#111', fontFamily:WF.font, overflow:'auto' }}>
+      {/* Top bar — V2 dark */}
+      <div style={{ position:'absolute', left:0, top:0, right:0, height:44,
+        background:'#1c1c1c', borderBottom:'1px solid #333',
+        display:'flex', alignItems:'center', padding:'0 20px', gap:16 }}>
+        <span style={{ fontFamily:WF.font, fontSize:15, color:'#fff', fontWeight:700, marginRight:16 }}>IM</span>
+        {['Cockpit','Holdings','HELOC','Net Worth','Watchlist','Settings'].map((lbl,i)=>(
+          <span key={lbl} style={{ fontFamily:WF.font, fontSize:13,
+            color: i===5 ? '#60a5fa' : '#777',
+            borderBottom: i===5 ? '2px solid #60a5fa' : 'none', paddingBottom:2 }}>{lbl}</span>
+        ))}
+      </div>
+
+      {/* Two-col grid of section cards */}
+      <div style={{ position:'absolute', left:12, right:12, top:56, bottom:12,
+        display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, overflow:'auto' }}>
+        {sections.map(({title,rows})=>(
+          <div key={title} style={{ background:'#181818', border:'1px solid #333', borderRadius:3,
+            padding:'10px 12px' }}>
+            <div style={{ fontFamily:WF.font, fontSize:12, color:'#aaa', fontWeight:600,
+              textTransform:'uppercase', letterSpacing:1, marginBottom:8 }}>{title}</div>
+            {rows.map(([lbl,val,action,priv],i)=>(
+              <div key={lbl+i} style={{ display:'flex', alignItems:'center', padding:'5px 0',
+                borderBottom: i<rows.length-1 ? '1px solid #222' : 'none',
+                fontFamily:WF.font, fontSize:12 }}>
+                <span style={{ flex:1.2, color:'#888' }}>{lbl}</span>
+                <span style={{ flex:1.2, color:'#e5e7eb', fontWeight:500 }}>{val}</span>
+                <span style={{ flex:1, textAlign:'right', color:'#60a5fa', fontSize:11 }}>{action}</span>
+                {priv!=='—' && (
+                  <span style={{ marginLeft:6, fontSize:8,
+                    color: priv==='cloud'?'#60a5fa':'#f87171',
+                    border:`1px solid ${priv==='cloud'?'#1d4ed8':'#dc2626'}`,
+                    borderRadius:2, padding:'0 3px' }}>{priv==='cloud'?'☁':'🔒'}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 function App() {
   return (
     <DesignCanvas title="Investments Monitor — Wireframes">
 
-      <DCSection id="cockpit" title="Screen 1: Cockpit (3 layout options)">
-        <DCArtboard id="c1" label="V1 Desktop Sidebar (Bloomberg-dense)" width={900} height={580}>
-          <CockpitV1/>
-        </DCArtboard>
-        <DCArtboard id="c2" label="V2 Dark Command Strip (Linear-style)" width={900} height={580}>
+      <DCSection id="cockpit" title="Screen 1: Cockpit (V2 Dark Command Strip — decided)">
+        <DCArtboard id="c2" label="Cockpit — dark top-nav, multi-dim allocation" width={900} height={580}>
           <CockpitV2/>
-        </DCArtboard>
-        <DCArtboard id="c3" label="V3 Mobile Card Stack (Path C — cloud/local split)" width={390} height={580}>
-          <CockpitV3/>
         </DCArtboard>
       </DCSection>
 
@@ -1363,6 +1453,12 @@ function App() {
       <DCSection id="login" title="Screen 6: Login Gate">
         <DCArtboard id="lg1" label="Login — Path C: public summary visible pre-auth" width={480} height={400}>
           <LoginScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="settings" title="Screen 7: Settings">
+        <DCArtboard id="st1" label="Settings — password, HELOC rate, refresh, FX, imports, summary" width={900} height={560}>
+          <SettingsScreen/>
         </DCArtboard>
       </DCSection>
 
