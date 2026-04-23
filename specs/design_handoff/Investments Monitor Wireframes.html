@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Investments Monitor — Wireframes</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Caveat+Brush&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a1a; font-family: 'Caveat', cursive; overflow: hidden; }
+</style>
+</head>
+<body>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+
+// ─── Shared Wireframe Primitives ────────────────────────────────────────────
+
+const WF = {
+  // Colors
+  bg: '#faf9f7',
+  bg2: '#f0ede8',
+  line: '#444',
+  lineFaint: '#bbb',
+  lineAccent: '#2563eb',
+  fill: '#e8e4de',
+  fillBlue: '#dbeafe',
+  fillGreen: '#d1fae5',
+  fillRed: '#fee2e2',
+  fillYellow: '#fef9c3',
+  fillPurple: '#ede9fe',
+  text: '#222',
+  textFaint: '#888',
+  cloud: '#2563eb',
+  local: '#dc2626',
+};
+
+const S = {
+  font: "'Caveat', cursive",
+  get: (sz) => ({ fontFamily: "'Caveat', cursive", fontSize: sz, color: WF.text }),
+};
+
+// Hatched SVG fill for chart placeholders
+function Hatch({ w, h, color = '#bbb', gap = 8, angle = 45, bg = 'transparent', style = {} }) {
+  const id = `h${Math.random().toString(36).slice(2,7)}`;
+  return (
+    <svg width={w} height={h} style={{ display:'block', ...style }}>
+      <defs>
+        <pattern id={id} width={gap} height={gap} patternUnits="userSpaceOnUse" patternTransform={`rotate(${angle})`}>
+          <line x1="0" y1="0" x2="0" y2={gap} stroke={color} strokeWidth="1.2"/>
+        </pattern>
+      </defs>
+      <rect width={w} height={h} fill={bg}/>
+      <rect width={w} height={h} fill={`url(#${id})`} opacity="0.6"/>
+    </svg>
+  );
+}
+
+// Box with rough sketchy border
+function Box({ x, y, w, h, fill = WF.fill, stroke = WF.line, strokeW = 1.5, r = 2, children, label, labelPos = 'tl', annotation, style = {} }) {
+  return (
+    <div style={{ position:'absolute', left:x, top:y, width:w, height:h,
+      background: fill, border: `${strokeW}px solid ${stroke}`, borderRadius: r,
+      overflow:'hidden', ...style }}>
+      {children}
+      {label && (
+        <div style={{ position:'absolute',
+          top: labelPos.includes('b') ? 'auto' : 4,
+          bottom: labelPos.includes('b') ? 4 : 'auto',
+          left: labelPos.includes('r') ? 'auto' : 6,
+          right: labelPos.includes('r') ? 6 : 'auto',
+          fontFamily: WF.font, fontSize: 11, color: WF.textFaint, pointerEvents:'none',
+          background: fill, padding:'0 2px', lineHeight:1 }}>
+          {label}
+        </div>
+      )}
+      {annotation && (
+        <div style={{ position:'absolute', bottom:3, right:5,
+          fontFamily: WF.font, fontSize: 10, color: WF.lineAccent, fontStyle:'italic' }}>
+          ← {annotation}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Text label shorthand
+function T({ x, y, size = 13, color = WF.text, weight = 400, children, italic = false, align = 'left', maxW }) {
+  return (
+    <div style={{ position:'absolute', left:x, top:y, fontFamily: WF.font, fontSize: size,
+      color, fontWeight: weight, fontStyle: italic ? 'italic' : 'normal',
+      textAlign: align, whiteSpace: maxW ? 'normal' : 'nowrap', maxWidth: maxW, lineHeight: 1.2 }}>
+      {children}
+    </div>
+  );
+}
+
+// Privacy badge
+function PrivacyBadge({ x, y, type = 'cloud' }) {
+  const isCloud = type === 'cloud';
+  return (
+    <div style={{ position:'absolute', left:x, top:y, display:'flex', alignItems:'center', gap:3,
+      background: isCloud ? '#dbeafe' : '#fee2e2',
+      border: `1px solid ${isCloud ? '#93c5fd' : '#fca5a5'}`,
+      borderRadius: 3, padding:'1px 5px', fontSize:10, fontFamily: WF.font,
+      color: isCloud ? '#1d4ed8' : '#dc2626', whiteSpace:'nowrap' }}>
+      {isCloud ? '☁ cloud-safe' : '🔒 local-only'}
+    </div>
+  );
+}
+
+// Pill / chip
+function Pill({ x, y, label, active = false, color = WF.lineAccent }) {
+  return (
+    <div style={{ position:'absolute', left:x, top:y, padding:'2px 8px',
+      border: `1.5px solid ${active ? color : WF.lineFaint}`,
+      borderRadius: 12, fontSize: 12, fontFamily: WF.font,
+      background: active ? color : 'transparent',
+      color: active ? '#fff' : WF.textFaint, whiteSpace:'nowrap' }}>
+      {label}
+    </div>
+  );
+}
+
+// Arrow annotation
+function Arrow({ x1, y1, x2, y2, label, color = WF.lineAccent }) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx*dx+dy*dy);
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  return (
+    <>
+      <div style={{ position:'absolute', left:x1, top:y1, width:len, height:0,
+        borderTop: `1.5px dashed ${color}`, transform:`rotate(${angle}deg)`, transformOrigin:'0 0', zIndex:20 }}/>
+      {label && <div style={{ position:'absolute', left:(x1+x2)/2-20, top:(y1+y2)/2-14,
+        fontSize:10, fontFamily: WF.font, color, zIndex:21, background: WF.bg, padding:'0 2px',
+        whiteSpace:'nowrap' }}>{label}</div>}
+    </>
+  );
+}
+
+// Divider line
+function Line({ x, y, w, h = 0, stroke = WF.lineFaint }) {
+  return <div style={{ position:'absolute', left:x, top:y, width:w, height:Math.max(h,1),
+    background: stroke }} />;
+}
+
+// KPI card
+function KPICard({ x, y, w, h, title, value, sub, privacy, accentColor }) {
+  return (
+    <Box x={x} y={y} w={w} h={h} fill={WF.bg} stroke={WF.line} strokeW={1.5}>
+      <T x={8} y={6} size={11} color={WF.textFaint}>{title}</T>
+      <T x={8} y={22} size={h > 60 ? 22 : 18} weight={700} color={accentColor || WF.text}>{value}</T>
+      {sub && <T x={8} y={h-18} size={11} color={WF.textFaint} italic>{sub}</T>}
+      {privacy && <PrivacyBadge x={w-82} y={4} type={privacy}/>}
+    </Box>
+  );
+}
+
+// ─── SCREEN 1A: Cockpit — "Bloomberg Grid" (desktop sidebar) ─────────────────
+
+function CockpitV1() {
+  const W = 900, H = 580;
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:WF.bg, fontFamily:WF.font }}>
+
+      {/* --- Sidebar --- */}
+      <Box x={0} y={0} w={140} h={H} fill={WF.bg2} stroke={WF.line} r={0}>
+        <T x={12} y={14} size={16} weight={700}>IM</T>
+        <T x={12} y={38} size={10} color={WF.textFaint}>InvestMonitor</T>
+        <Line x={8} y={58} w={120}/>
+        {[['◉ Cockpit',70,true],['⊞ Holdings',95,false],['⚡ HELOC',120,false],
+          ['⊛ Net Worth',145,false],['★ Watchlist',170,false]].map(([lbl,yy,active])=>(
+          <div key={lbl} style={{ position:'absolute', left:0, top:yy, width:140,
+            padding:'4px 12px', background: active ? WF.lineAccent : 'transparent',
+            fontFamily:WF.font, fontSize:13, color: active ? '#fff' : WF.text }}>
+            {lbl}
+          </div>
+        ))}
+        <Line x={8} y={200} w={120}/>
+        <T x={12} y={208} size={10} color={WF.textFaint}>Account scope</T>
+        {[['All',220,true],['RRSP',240,false],['TFSA',260,false],['Unreg.',280,false],['Crypto',300,false]].map(([lbl,yy,active])=>(
+          <div key={lbl} style={{ position:'absolute', left:12, top:yy,
+            fontFamily:WF.font, fontSize:12, color: active ? WF.lineAccent : WF.textFaint,
+            fontWeight: active ? 700 : 400 }}>
+            {active ? '▶ ' : '  '}{lbl}
+          </div>
+        ))}
+        <Line x={8} y={320} w={120}/>
+        <T x={12} y={328} size={10} color={WF.textFaint}>View</T>
+        <T x={12} y={344} size={12} color={WF.lineAccent} weight={700}>Individual ▾</T>
+        <T x={12} y={362} size={11} color={WF.textFaint} italic>Family</T>
+        <T x={12} y={H-30} size={10} color={WF.textFaint}>v0.1 alpha</T>
+      </Box>
+
+      {/* --- Top bar --- */}
+      <Box x={140} y={0} w={W-140} h={36} fill={WF.bg2} stroke={WF.line} r={0}>
+        <T x={12} y={9} size={13} weight={600}>Cockpit — All Accounts</T>
+        <T x={W-280} y={10} size={11} color={WF.textFaint}>Apr 22, 2026  14:32 EDT</T>
+        <div style={{ position:'absolute', right:12, top:6, display:'flex', gap:6 }}>
+          <div style={{ padding:'2px 8px', border:`1.5px solid ${WF.lineAccent}`, borderRadius:3,
+            fontSize:11, fontFamily:WF.font, color:WF.lineAccent }}>☁ Public view</div>
+          <div style={{ padding:'2px 8px', border:`1.5px solid ${WF.lineFaint}`, borderRadius:3,
+            fontSize:11, fontFamily:WF.font, color:WF.textFaint }}>⚙</div>
+        </div>
+      </Box>
+
+      {/* --- Row 1: KPI strip --- */}
+      {/* Net Worth */}
+      <KPICard x={148} y={44} w={155} h={72} title="Net Worth" value="$847,320" sub="↑ $4,210 today" privacy="cloud"/>
+      {/* Leverage Ratio */}
+      <KPICard x={311} y={44} w={130} h={72} title="Leverage Ratio" value="1.42×" sub="HELOC / Equity" privacy="cloud"/>
+      {/* Portfolio Value */}
+      <KPICard x={449} y={44} w={140} h={72} title="Portfolio Value" value="$512,840" sub="CAD incl. USD" privacy="local"/>
+      {/* Unrealized G/L */}
+      <KPICard x={597} y={44} w={130} h={72} title="Unrealized G/L" value="+$68,440" sub="▲ +15.4%" privacy="local" accentColor="#059669"/>
+      {/* Monthly Interest */}
+      <KPICard x={735} y={44} w={150} h={72} title="HELOC Interest" value="$487/mo" sub="$94k drawn" privacy="cloud"/>
+
+      {/* --- Row 2 left: Allocation pie placeholder --- */}
+      <Box x={148} y={124} w={210} h={200} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={11} color={WF.textFaint}>Allocation</T>
+        <PrivacyBadge x={100} y={4} type="cloud"/>
+        {/* Fake pie */}
+        <svg width={210} height={160} style={{ position:'absolute', top:24 }}>
+          <circle cx={105} cy={80} r={60} fill="none" stroke={WF.lineFaint} strokeWidth={1}/>
+          {/* Pie slices as rough arcs */}
+          <path d="M105,80 L105,20 A60,60 0 0,1 157,110 Z" fill="#dbeafe" stroke={WF.line} strokeWidth={1}/>
+          <path d="M105,80 L157,110 A60,60 0 0,1 80,138 Z" fill="#d1fae5" stroke={WF.line} strokeWidth={1}/>
+          <path d="M105,80 L80,138 A60,60 0 0,1 53,53 Z" fill="#fef9c3" stroke={WF.line} strokeWidth={1}/>
+          <path d="M105,80 L53,53 A60,60 0 0,1 105,20 Z" fill="#ede9fe" stroke={WF.line} strokeWidth={1}/>
+          <text x={128} y={68} fontSize={9} fontFamily="Caveat" fill={WF.text}>RRSP 38%</text>
+          <text x={138} y={115} fontSize={9} fontFamily="Caveat" fill={WF.text}>TFSA 24%</text>
+          <text x={42} y={138} fontSize={9} fontFamily="Caveat" fill={WF.text}>Unreg. 28%</text>
+          <text x={30} y={52} fontSize={9} fontFamily="Caveat" fill={WF.text}>Crypto 10%</text>
+        </svg>
+      </Box>
+
+      {/* --- Row 2 mid: Leverage gauge --- */}
+      <Box x={366} y={124} w={210} h={200} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={11} color={WF.textFaint}>Leverage Ratio Gauge</T>
+        <PrivacyBadge x={120} y={4} type="cloud"/>
+        <svg width={210} height={140} style={{ position:'absolute', top:28 }}>
+          {/* Semicircle gauge */}
+          <path d="M30,110 A80,80 0 0,1 180,110" fill="none" stroke={WF.lineFaint} strokeWidth={16} strokeLinecap="round"/>
+          <path d="M30,110 A80,80 0 0,1 120,32" fill="none" stroke={WF.lineAccent} strokeWidth={16} strokeLinecap="round" opacity={0.7}/>
+          {/* Needle */}
+          <line x1={105} y1={110} x2={72} y2={44} stroke={WF.line} strokeWidth={2.5}/>
+          <circle cx={105} cy={110} r={5} fill={WF.line}/>
+          <text x={90} y={100} fontSize={20} fontFamily="Caveat" fontWeight={700} fill={WF.text}>1.42×</text>
+          <text x={28} y={128} fontSize={9} fontFamily="Caveat" fill="#059669">Safe 0–1.5</text>
+          <text x={148} y={128} fontSize={9} fontFamily="Caveat" fill="#dc2626">Caution 2+</text>
+        </svg>
+        {/* What-if slider */}
+        <div style={{ position:'absolute', bottom:8, left:8, right:8 }}>
+          <div style={{ fontSize:10, fontFamily:WF.font, color:WF.textFaint }}>What-if: draw $____</div>
+          <div style={{ height:6, background:WF.fill, borderRadius:3, margin:'3px 0',
+            border:`1px solid ${WF.lineFaint}`, position:'relative' }}>
+            <div style={{ width:'42%', height:'100%', background:WF.lineAccent, borderRadius:3 }}/>
+            <div style={{ position:'absolute', left:'42%', top:-4, width:12, height:12,
+              background:WF.lineAccent, borderRadius:'50%', transform:'translateX(-50%)',
+              border:`2px solid ${WF.bg}` }}/>
+          </div>
+          <div style={{ fontSize:10, fontFamily:WF.font, color:WF.lineAccent, fontStyle:'italic' }}>→ ratio would be 1.71×</div>
+        </div>
+      </Box>
+
+      {/* --- Row 2 right: HELOC bar + interest --- */}
+      <Box x={584} y={124} w={300} h={200} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={11} color={WF.textFaint}>HELOC Utilization</T>
+        <PrivacyBadge x={145} y={4} type="local"/>
+        {/* Bar */}
+        <div style={{ position:'absolute', left:8, top:26, right:8, height:18,
+          background:WF.fill, border:`1px solid ${WF.lineFaint}`, borderRadius:2 }}>
+          <div style={{ width:'62%', height:'100%', background:'#fb923c', opacity:0.7, borderRadius:2 }}/>
+        </div>
+        <T x={8} y={50} size={11} color={WF.textFaint}>$94,000 / $150,000 drawn (62%)</T>
+        <Line x={8} y={68} w={284}/>
+        {/* Mini interest breakdown */}
+        <T x={8} y={76} size={11} weight={700}>Interest breakdown</T>
+        {[['This month', '$487', false],['YTD 2026','$1,841',false],['Tax-deductible','$1,620','green'],['Non-deductible','$221','red']].map(([lbl,val,col],i)=>(
+          <div key={lbl} style={{ position:'absolute', left:8, top:94+i*22, width:284,
+            display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:12 }}>
+            <span style={{ color: WF.text }}>{lbl}</span>
+            <span style={{ color: col === 'green' ? '#059669' : col === 'red' ? '#dc2626' : WF.text, fontWeight:600 }}>{val}</span>
+          </div>
+        ))}
+        <T x={8} y={182} size={10} color={WF.textFaint} italic>✓ Unregistered acct interest = tax-deductible</T>
+      </Box>
+
+      {/* --- Row 3: Mini holdings + watchlist --- */}
+      <Box x={148} y={332} w={396} h={200} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={11} color={WF.textFaint}>Top Holdings (preview)</T>
+        <PrivacyBadge x={160} y={4} type="local"/>
+        <T x={320} y={6} size={11} color={WF.lineAccent} italic>→ Holdings table</T>
+        {/* Table header */}
+        <div style={{ position:'absolute', left:0, top:24, right:0, height:18,
+          background:WF.fill, display:'flex', alignItems:'center', padding:'0 8px',
+          fontFamily:WF.font, fontSize:11, color:WF.textFaint, gap:0 }}>
+          <span style={{ width:60 }}>Ticker</span>
+          <span style={{ width:50 }}>Acct</span>
+          <span style={{ width:80, textAlign:'right' }}>Mkt Val</span>
+          <span style={{ width:90, textAlign:'right' }}>Unreal G/L</span>
+          <span style={{ width:80, textAlign:'right' }}>% Port</span>
+        </div>
+        {[
+          ['RY.TO','RRSP','$42,180','+$3,840 ▲','8.2%','green'],
+          ['SHOP.TO','TFSA','$38,440','+$12,600 ▲','7.5%','green'],
+          ['BTC-CAD','Crypto','$51,200','+$8,900 ▲','10.0%','green'],
+          ['XIU.TO','Unreg.','$31,000','-$1,200 ▼','6.0%','red'],
+          ['MSFT','RRSP','$28,700','+$5,100 ▲','5.6%','green'],
+        ].map(([tick,acct,val,gl,pct,col],i)=>(
+          <div key={tick} style={{ position:'absolute', left:0, top:42+i*28, right:0, height:26,
+            background: i%2===0 ? 'transparent' : WF.bg2,
+            display:'flex', alignItems:'center', padding:'0 8px',
+            fontFamily:WF.font, fontSize:12, cursor:'pointer' }}>
+            <span style={{ width:60, fontWeight:700 }}>{tick}</span>
+            <span style={{ width:50, fontSize:10, color:WF.textFaint }}>{acct}</span>
+            <span style={{ width:80, textAlign:'right' }}>{val}</span>
+            <span style={{ width:90, textAlign:'right', color: col==='green'?'#059669':'#dc2626' }}>
+              {col==='green'?'●':'■'} {gl}
+            </span>
+            <span style={{ width:80, textAlign:'right', color:WF.textFaint }}>{pct}</span>
+          </div>
+        ))}
+        <T x={8} y={182} size={10} color={WF.textFaint} italic>click row → detail drawer</T>
+      </Box>
+
+      {/* --- Watchlist mini --- */}
+      <Box x={552} y={332} w={332} h={200} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={11} color={WF.textFaint}>Watchlist alerts</T>
+        <PrivacyBadge x={145} y={4} type="cloud"/>
+        {[
+          ['ATD.TO','$72.40','$68.00','—','Near target'],
+          ['ENB.TO','$57.10','$52.00','—','Wait'],
+          ['VFV.TO','$145.20','$138.00','—','Wait'],
+        ].map(([tick,cur,target,_,status],i)=>(
+          <div key={tick} style={{ position:'absolute', left:8, top:28+i*44, right:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:13, fontWeight:700 }}>
+              <span>{tick}</span>
+              <span style={{ color: WF.text }}>{cur} CAD</span>
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:11, color:WF.textFaint }}>
+              <span>Target: {target}</span>
+              <span style={{ color: status==='Near target' ? '#f59e0b' : WF.textFaint }}>{status}</span>
+            </div>
+            {/* Mini range bar */}
+            <div style={{ height:5, background:WF.fill, borderRadius:3, margin:'3px 0',
+              border:`1px solid ${WF.lineFaint}`, position:'relative' }}>
+              <div style={{ position:'absolute', left:'60%', top:-2, width:2, height:9, background:'#f59e0b' }}/>
+              <div style={{ position:'absolute', left:'72%', top:-2, width:2, height:9, background:WF.lineAccent }}/>
+            </div>
+          </div>
+        ))}
+        <T x={8} y={165} size={10} color={WF.textFaint} italic>yellow = target | blue = current</T>
+        <T x={8} y={180} size={11} color={WF.lineAccent}>→ Full watchlist</T>
+      </Box>
+
+      {/* Annotation: privacy color key */}
+      <div style={{ position:'absolute', right:8, bottom:4, display:'flex', gap:8, alignItems:'center' }}>
+        <div style={{ fontSize:10, fontFamily:WF.font, color:WF.textFaint, fontStyle:'italic' }}>Privacy:</div>
+        <PrivacyBadge x={0} y={0} type="cloud"/>
+        <PrivacyBadge x={0} y={0} type="local"/>
+      </div>
+    </div>
+  );
+}
+
+// ─── SCREEN 1B: Cockpit — "Command Strip" (top nav, linear-style) ─────────────
+
+function CockpitV2() {
+  const W = 900, H = 580;
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:'#111', fontFamily:WF.font }}>
+
+      {/* Top bar */}
+      <div style={{ position:'absolute', left:0, top:0, right:0, height:44,
+        background:'#1c1c1c', borderBottom:`1px solid #333`, display:'flex', alignItems:'center', padding:'0 20px', gap:16 }}>
+        <span style={{ fontFamily:WF.font, fontSize:15, color:'#fff', fontWeight:700, marginRight:16 }}>IM</span>
+        {['Cockpit','Holdings','HELOC','Net Worth','Watchlist'].map((lbl,i)=>(
+          <span key={lbl} style={{ fontFamily:WF.font, fontSize:13, color: i===0 ? '#60a5fa' : '#777',
+            borderBottom: i===0 ? '2px solid #60a5fa' : 'none', paddingBottom:2, cursor:'pointer' }}>{lbl}</span>
+        ))}
+        {/* Right side */}
+        <div style={{ marginLeft:'auto', display:'flex', gap:10, alignItems:'center' }}>
+          <span style={{ fontFamily:WF.font, fontSize:11, color:'#555' }}>Individual ▾</span>
+          <span style={{ fontFamily:WF.font, fontSize:11, color:'#60a5fa', border:'1px solid #60a5fa',
+            borderRadius:3, padding:'1px 6px' }}>☁ Public</span>
+        </div>
+      </div>
+
+      {/* Account scope pills */}
+      <div style={{ position:'absolute', left:20, top:52, display:'flex', gap:8 }}>
+        {['All','RRSP','TFSA','Unregistered','Crypto'].map((lbl,i)=>(
+          <div key={lbl} style={{ fontFamily:WF.font, fontSize:12, padding:'2px 10px',
+            border:`1px solid ${i===0 ? '#60a5fa' : '#444'}`,
+            borderRadius:12, color: i===0 ? '#60a5fa' : '#777',
+            background: i===0 ? '#1d3561' : 'transparent' }}>{lbl}</div>
+        ))}
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ position:'absolute', left:0, top:80, right:0, height:74, background:'#181818',
+        borderTop:'1px solid #333', borderBottom:'1px solid #333',
+        display:'flex', alignItems:'center' }}>
+        {[
+          ['Net Worth','$847,320 CAD','↑ $4,210','cloud'],
+          ['Portfolio','$512,840 CAD','–','local'],
+          ['Leverage','1.42×','HELOC/Equity','cloud'],
+          ['HELOC Drawn','$94,000','of $150k','cloud'],
+          ['Unreal G/L','+$68,440','▲ +15.4%','local'],
+          ['Interest/mo','$487','$94 tax-ded.','local'],
+        ].map(([lbl,val,sub,priv],i,arr)=>(
+          <div key={lbl} style={{ flex:1, padding:'0 16px', borderRight: i<arr.length-1 ? '1px solid #2a2a2a' : 'none' }}>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', display:'flex', alignItems:'center', gap:4 }}>
+              {lbl}
+              <span style={{ fontSize:8, color: priv==='cloud'?'#60a5fa':'#f87171',
+                border:`1px solid ${priv==='cloud'?'#1d4ed8':'#dc2626'}`,
+                borderRadius:2, padding:'0 2px' }}>{priv==='cloud'?'☁':'🔒'}</span>
+            </div>
+            <div style={{ fontFamily:WF.font, fontSize:18, fontWeight:700, color:'#e5e7eb' }}>{val}</div>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555' }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main content: two columns */}
+      {/* Left col: allocation + leverage */}
+      <Box x={12} y={162} w={340} h={240} fill="#181818" stroke="#333" strokeW={1}>
+        <T x={10} y={8} size={12} color="#aaa" weight={600}>Allocation by account</T>
+        {/* Stacked bar */}
+        <div style={{ position:'absolute', left:10, top:32, right:10, height:24, display:'flex', borderRadius:3, overflow:'hidden' }}>
+          {[['#3b82f6',38],['#10b981',24],['#f59e0b',28],['#a78bfa',10]].map(([c,w],i)=>(
+            <div key={i} style={{ width:`${w}%`, background:c, opacity:0.7 }}/>
+          ))}
+        </div>
+        <div style={{ position:'absolute', left:10, top:60, display:'flex', gap:12, flexWrap:'wrap' }}>
+          {[['#3b82f6','RRSP 38%'],['#10b981','TFSA 24%'],['#f59e0b','Unreg. 28%'],['#a78bfa','Crypto 10%']].map(([c,lbl])=>(
+            <div key={lbl} style={{ display:'flex', alignItems:'center', gap:4, fontFamily:WF.font, fontSize:11, color:'#aaa' }}>
+              <div style={{ width:8, height:8, background:c, borderRadius:1 }}/>{lbl}
+            </div>
+          ))}
+        </div>
+        <Line x={8} y={84} w={322} stroke="#2a2a2a"/>
+        <T x={10} y={92} size={12} color="#aaa" weight={600}>Leverage trend (90d)</T>
+        {/* Sparkline */}
+        <svg width={320} height={100} style={{ position:'absolute', top:112, left:10 }}>
+          <polyline points="0,70 40,60 80,72 120,55 160,48 200,52 240,44 280,38 320,42"
+            fill="none" stroke="#60a5fa" strokeWidth={2}/>
+          <line x1={0} y1={50} x2={320} y2={50} stroke="#444" strokeWidth={1} strokeDasharray="4,4"/>
+          <text x={4} y={48} fontSize={9} fontFamily="Caveat" fill="#60a5fa">1.5× caution</text>
+          <text x={270} y={38} fontSize={10} fontFamily="Caveat" fill="#e5e7eb">1.42×</text>
+        </svg>
+      </Box>
+
+      {/* Mid: HELOC what-if */}
+      <Box x={360} y={162} w={240} h={240} fill="#181818" stroke="#333" strokeW={1}>
+        <T x={10} y={8} size={12} color="#aaa" weight={600}>HELOC what-if</T>
+        <T x={10} y={28} size={11} color="#555">Current draw: $94,000</T>
+        {/* Gauge */}
+        <svg width={220} height={120} style={{ position:'absolute', top:46, left:10 }}>
+          <path d="M20,100 A80,80 0 0,1 200,100" fill="none" stroke="#2a2a2a" strokeWidth={18} strokeLinecap="round"/>
+          <path d="M20,100 A80,80 0 0,1 130,24" fill="none" stroke="#60a5fa" strokeWidth={18} strokeLinecap="round" opacity={0.8}/>
+          <line x1={110} y1={100} x2={78} y2={34} stroke="#e5e7eb" strokeWidth={2}/>
+          <circle cx={110} cy={100} r={5} fill="#e5e7eb"/>
+          <text x={90} y={92} fontSize={18} fontFamily="Caveat" fontWeight={700} fill="#e5e7eb">1.42×</text>
+          <text x={12} y={116} fontSize={9} fontFamily="Caveat" fill="#10b981">Safe</text>
+          <text x={186} y={116} fontSize={9} fontFamily="Caveat" fill="#ef4444">High</text>
+        </svg>
+        <T x={10} y={170} size={11} color="#555">Draw another →</T>
+        <div style={{ position:'absolute', left:10, top:185, right:10, height:6,
+          background:'#2a2a2a', borderRadius:3 }}>
+          <div style={{ width:'30%', height:'100%', background:'#60a5fa', borderRadius:3 }}/>
+          <div style={{ position:'absolute', left:'30%', top:-4, width:12, height:12,
+            background:'#60a5fa', borderRadius:'50%', transform:'translateX(-50%)',
+            border:`2px solid #111` }}/>
+        </div>
+        <T x={10} y={198} size={11} color="#60a5fa" italic>+$30k → ratio 1.68×</T>
+        <T x={10} y={216} size={10} color="#555" italic>interest +$162/mo</T>
+      </Box>
+
+      {/* Right: property / net worth breakdown */}
+      <Box x={608} y={162} w={280} h={240} fill="#181818" stroke="#333" strokeW={1}>
+        <T x={10} y={8} size={12} color="#aaa" weight={600}>Asset / Liability summary</T>
+        {[
+          ['Assets','',''],
+          ['  Portfolio','$512,840',''],
+          ['  Primary residence','$880,000',''],
+          ['  Cash / HISA','$22,400',''],
+          ['Liabilities','',''],
+          ['  Mortgage','($412,000)',''],
+          ['  HELOC','($94,000)',''],
+          ['NET WORTH','$909,240',''],
+        ].map(([lbl,val,_],i)=>(
+          <div key={i} style={{ position:'absolute', left:8, top:26+i*22, right:8,
+            display:'flex', justifyContent:'space-between',
+            fontFamily:WF.font, fontSize: lbl==='NET WORTH'||lbl==='Assets'||lbl==='Liabilities' ? 13 : 12,
+            fontWeight: lbl==='NET WORTH' ? 700 : lbl==='Assets'||lbl==='Liabilities' ? 600 : 400,
+            color: lbl==='NET WORTH' ? '#60a5fa' : val.startsWith('(') ? '#f87171' : '#aaa',
+            borderTop: lbl==='NET WORTH' ? '1px solid #333' : 'none',
+            paddingTop: lbl==='NET WORTH' ? 4 : 0,
+          }}>
+            <span>{lbl}</span>
+            <span>{val}</span>
+          </div>
+        ))}
+      </Box>
+
+      {/* Bottom row: watchlist mini */}
+      <Box x={12} y={410} w={340} h={160} fill="#181818" stroke="#333" strokeW={1}>
+        <T x={10} y={8} size={12} color="#aaa" weight={600}>Watchlist — near target</T>
+        {[['ATD.TO','$72.40','$68.00','▼ 6% to target'],['ENB.TO','$57.10','$52.00','▼ 9%'],['VFV.TO','$145.20','$138.00','▼ 5%']].map(([t,c,tg,d],i)=>(
+          <div key={t} style={{ position:'absolute', left:8, top:28+i*38, right:8 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:13, color:'#e5e7eb' }}>
+              <span style={{ fontWeight:700 }}>{t}</span><span>{c}</span>
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:10, color:'#555' }}>
+              <span>Target {tg}</span><span style={{ color:'#f59e0b' }}>{d}</span>
+            </div>
+          </div>
+        ))}
+      </Box>
+
+      {/* Holdings preview */}
+      <Box x={360} y={410} w={528} h={160} fill="#181818" stroke="#333" strokeW={1}>
+        <T x={10} y={8} size={12} color="#aaa" weight={600}>Top holdings — local-only</T>
+        <div style={{ position:'absolute', left:8, top:26, right:8, height:14,
+          display:'flex', fontFamily:WF.font, fontSize:10, color:'#555', gap:0 }}>
+          {['Ticker','Acct','Qty','ACB','Mkt Price','G/L','%Port'].map((h,i)=>(
+            <span key={h} style={{ flex:i===0||i===1?0.8:1, textAlign:i>1?'right':'left' }}>{h}</span>
+          ))}
+        </div>
+        {[['RY.TO','RRSP','180','$210.44','$234.33','+$4,302 ▲','8.2%'],
+          ['SHOP.TO','TFSA','22','$1,188.20','$1,747.27','+$12,304 ▲','7.5%'],
+          ['BTC-CAD','Crypto','1.2','$29,833','$42,667','+$15,401 ▲','10.0%'],
+          ['XIU.TO','Unreg.','310','$102.60','$100.00','-$806 ▼','6.0%']].map(([t,a,q,acb,p,gl,pct],i)=>(
+          <div key={t} style={{ position:'absolute', left:8, top:42+i*27, right:8, height:24,
+            display:'flex', alignItems:'center', fontFamily:WF.font, fontSize:12,
+            background: i%2===0 ? 'transparent' : '#222', borderRadius:2 }}>
+            {[t,a,q,acb,p,gl,pct].map((v,j)=>(
+              <span key={j} style={{ flex:j===0||j===1?0.8:1, textAlign:j>1?'right':'left',
+                color: j===5 ? (v.includes('▲')?'#10b981':'#ef4444') : j===0 ? '#e5e7eb' : '#888',
+                fontWeight: j===0?700:400 }}>{j===5 ? (v.includes('▲')?'● ':'■ ')+v : v}</span>
+            ))}
+          </div>
+        ))}
+      </Box>
+
+      {/* Dark mode label */}
+      <T x={W-120} y={H-18} size={11} color="#444" italic>dark / monochrome</T>
+    </div>
+  );
+}
+
+// ─── SCREEN 1C: Cockpit — "Mobile Card Stack" ────────────────────────────────
+
+function CockpitV3() {
+  const W = 390, H = 580;
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:'#f5f4f2', fontFamily:WF.font, overflow:'hidden' }}>
+      {/* Status bar */}
+      <div style={{ position:'absolute', left:0, top:0, right:0, height:28,
+        background:WF.bg2, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0 12px',
+        fontSize:11, fontFamily:WF.font, color:WF.textFaint, borderBottom:`1px solid ${WF.lineFaint}` }}>
+        <span>9:41</span><span>● ●●●  WiFi</span>
+      </div>
+
+      {/* App header */}
+      <div style={{ position:'absolute', left:0, top:28, right:0, height:40,
+        background:WF.bg, borderBottom:`1px solid ${WF.lineFaint}`,
+        display:'flex', alignItems:'center', padding:'0 14px', justifyContent:'space-between' }}>
+        <span style={{ fontFamily:WF.font, fontSize:16, fontWeight:700 }}>Cockpit</span>
+        <div style={{ display:'flex', gap:8 }}>
+          <span style={{ fontFamily:WF.font, fontSize:11, color:WF.lineAccent, border:`1px solid ${WF.lineAccent}`,
+            borderRadius:3, padding:'1px 6px' }}>☁ Public</span>
+          <span style={{ fontFamily:WF.font, fontSize:13, color:WF.textFaint }}>⚙</span>
+        </div>
+      </div>
+
+      {/* Account pills — horizontal scroll */}
+      <div style={{ position:'absolute', left:0, top:68, right:0, height:32, overflowX:'auto',
+        display:'flex', alignItems:'center', gap:6, padding:'0 12px',
+        background:WF.bg, borderBottom:`1px solid ${WF.lineFaint}` }}>
+        {['All ✓','RRSP','TFSA','Unreg.','Crypto'].map((lbl,i)=>(
+          <div key={lbl} style={{ padding:'2px 10px', flexShrink:0,
+            border:`1.5px solid ${i===0 ? WF.lineAccent : WF.lineFaint}`,
+            borderRadius:12, fontSize:12, fontFamily:WF.font,
+            background: i===0 ? WF.lineAccent : 'transparent',
+            color: i===0 ? '#fff' : WF.textFaint }}>{lbl}</div>
+        ))}
+      </div>
+
+      {/* Card: Net Worth — cloud-safe */}
+      <Box x={10} y={108} w={370} h={90} fill={WF.bg} stroke={WF.line}>
+        <PrivacyBadge x={8} y={6} type="cloud"/>
+        <T x={8} y={24} size={11} color={WF.textFaint}>Net Worth</T>
+        <T x={8} y={40} size={28} weight={700}>$847,320</T>
+        <T x={8} y={72} size={12} color="#059669">↑ $4,210 today  (+0.5%)</T>
+        {/* Mini donut placeholder */}
+        <svg width={60} height={60} style={{ position:'absolute', right:10, top:15 }}>
+          <circle cx={30} cy={30} r={20} fill="none" stroke={WF.fill} strokeWidth={8}/>
+          <circle cx={30} cy={30} r={20} fill="none" stroke={WF.lineAccent} strokeWidth={8}
+            strokeDasharray="75 53" strokeDashoffset="0" strokeLinecap="round"/>
+        </svg>
+      </Box>
+
+      {/* Card: Leverage — cloud-safe */}
+      <div style={{ position:'absolute', left:10, top:206, width:178, height:80,
+        background:WF.bg, border:`1.5px solid ${WF.line}`, borderRadius:2 }}>
+        <PrivacyBadge x={4} y={4} type="cloud"/>
+        <T x={8} y={24} size={11} color={WF.textFaint}>Leverage</T>
+        <T x={8} y={40} size={24} weight={700}>1.42×</T>
+        <T x={8} y={66} size={11} color="#059669">● Safe zone</T>
+      </div>
+
+      {/* Card: HELOC — cloud-safe */}
+      <div style={{ position:'absolute', left:202, top:206, width:178, height:80,
+        background:WF.bg, border:`1.5px solid ${WF.line}`, borderRadius:2 }}>
+        <PrivacyBadge x={4} y={4} type="cloud"/>
+        <T x={8} y={24} size={11} color={WF.textFaint}>HELOC drawn</T>
+        <T x={8} y={40} size={20} weight={700}>$94,000</T>
+        <div style={{ position:'absolute', left:8, top:65, right:8, height:6,
+          background:WF.fill, borderRadius:3, border:`1px solid ${WF.lineFaint}` }}>
+          <div style={{ width:'62%', height:'100%', background:'#fb923c', borderRadius:3 }}/>
+        </div>
+      </div>
+
+      {/* Card: Holdings — local-only, blurred */}
+      <Box x={10} y={294} w={370} h={100} fill={WF.bg} stroke={WF.line}>
+        <PrivacyBadge x={8} y={6} type="local"/>
+        <T x={8} y={24} size={12} weight={600}>Holdings (local-only)</T>
+        {/* Blurred content simulation */}
+        <div style={{ position:'absolute', left:8, top:42, right:8, bottom:8,
+          filter:'blur(4px)', pointerEvents:'none' }}>
+          {['RY.TO  $42,180  +$3,840','SHOP.TO  $38,440  +$12,600','BTC-CAD  $51,200  +$8,900'].map((r,i)=>(
+            <div key={i} style={{ fontFamily:WF.font, fontSize:12, color:WF.text, marginBottom:6 }}>{r}</div>
+          ))}
+        </div>
+        <div style={{ position:'absolute', left:0, top:42, right:0, bottom:0,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          background:'rgba(250,249,247,0.5)' }}>
+          <span style={{ fontFamily:WF.font, fontSize:13, color:WF.line }}>🔒 On local network only</span>
+        </div>
+      </Box>
+
+      {/* Watchlist mini */}
+      <Box x={10} y={402} w={370} h={90} fill={WF.bg} stroke={WF.line}>
+        <PrivacyBadge x={8} y={6} type="cloud"/>
+        <T x={8} y={24} size={12} weight={600}>Watchlist — 3 alerts</T>
+        {[['ATD.TO','$72.40','near target'],['ENB.TO','$57.10','waiting'],['VFV.TO','$145.20','waiting']].map(([t,p,s],i)=>(
+          <div key={t} style={{ position:'absolute', left:8, top:40+i*16, right:8,
+            display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:12 }}>
+            <span style={{ fontWeight:700 }}>{t}</span>
+            <span>{p}</span>
+            <span style={{ color: s==='near target'?'#f59e0b':WF.textFaint, fontSize:11 }}>{s}</span>
+          </div>
+        ))}
+      </Box>
+
+      {/* Bottom nav */}
+      <div style={{ position:'absolute', left:0, bottom:0, right:0, height:52,
+        background:WF.bg, borderTop:`1.5px solid ${WF.line}`,
+        display:'flex', justifyContent:'space-around', alignItems:'center' }}>
+        {[['◉','Cockpit',true],['⊞','Holdings',false],['⚡','HELOC',false],['★','Watch',false]].map(([ic,lbl,active])=>(
+          <div key={lbl} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+            <span style={{ fontSize:18, color: active ? WF.lineAccent : WF.textFaint }}>{ic}</span>
+            <span style={{ fontFamily:WF.font, fontSize:10, color: active ? WF.lineAccent : WF.textFaint }}>{lbl}</span>
+          </div>
+        ))}
+      </div>
+
+      <T x={W/2-60} y={H-62} size={10} color={WF.textFaint} italic>bottom nav · touch targets 44px+</T>
+    </div>
+  );
+}
+
+// ─── SCREEN 2: Holdings Table ─────────────────────────────────────────────────
+
+function HoldingsScreen() {
+  const W = 900, H = 560;
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:WF.bg, fontFamily:WF.font }}>
+      {/* Top bar */}
+      <Box x={0} y={0} w={W} h={40} fill={WF.bg2} stroke={WF.line} r={0}>
+        <T x={12} y={10} size={14} weight={700}>Holdings</T>
+        <PrivacyBadge x={100} y={10} type="local"/>
+        {/* Filter pills */}
+        <div style={{ position:'absolute', left:220, top:8, display:'flex', gap:6 }}>
+          {['All','RRSP','TFSA','Unregistered','Crypto'].map((lbl,i)=>(
+            <div key={lbl} style={{ padding:'1px 8px', border:`1.5px solid ${i===0 ? WF.lineAccent : WF.lineFaint}`,
+              borderRadius:10, fontSize:11, fontFamily:WF.font,
+              background: i===0 ? WF.fillBlue : 'transparent',
+              color: i===0 ? WF.lineAccent : WF.textFaint }}>{lbl}</div>
+          ))}
+        </div>
+        <div style={{ position:'absolute', right:12, top:8, display:'flex', gap:8 }}>
+          <div style={{ padding:'1px 8px', border:`1px solid ${WF.lineFaint}`, borderRadius:3,
+            fontSize:11, fontFamily:WF.font, color:WF.textFaint }}>Sort ▾</div>
+          <div style={{ padding:'1px 8px', border:`1px solid ${WF.lineFaint}`, borderRadius:3,
+            fontSize:11, fontFamily:WF.font, color:WF.textFaint }}>Export</div>
+        </div>
+      </Box>
+
+      {/* Column headers */}
+      <div style={{ position:'absolute', left:0, top:40, right:0, height:24,
+        background:WF.fill, display:'flex', alignItems:'center', padding:'0 12px',
+        fontFamily:WF.font, fontSize:11, color:WF.textFaint,
+        borderBottom:`1px solid ${WF.lineFaint}` }}>
+        {['Ticker ▲','Name','Acct','Qty','ACB/sh','Mkt Price','Mkt Value','Unreal G/L','G/L %','% Port','Actions'].map((h,i)=>(
+          <span key={h} style={{ flex: i===1 ? 1.8 : i===10 ? 0.7 : 1, textAlign: i>2 ? 'right' : 'left', cursor:'pointer' }}>{h}</span>
+        ))}
+      </div>
+
+      {/* Table rows */}
+      {[
+        ['RY.TO','Royal Bank of Canada','RRSP','180','$210.44','$234.33','$42,179','+$4,302','▲ +10.2%','8.2%'],
+        ['SHOP.TO','Shopify Inc.','TFSA','22','$1,188.20','$1,747.27','$38,440','+$12,304','▲ +23.6%','7.5%'],
+        ['BTC-CAD','Bitcoin','Crypto','1.20','$29,833','$42,667','$51,200','+$15,401','▲ +43.0%','10.0%'],
+        ['XIU.TO','iShares S&P/TSX 60','Unreg.','310','$102.60','$100.00','$31,000','-$806','▼ -2.5%','6.0%'],
+        ['MSFT','Microsoft Corp','RRSP','46','$310.20','$423.80','$19,495','+$5,243','▲ +36.8%','3.8%'],
+        ['ENB.TO','Enbridge Inc.','RRSP','420','$45.20','$57.10','$23,982','+$4,998','▲ +26.3%','4.7%'],
+        ['XEQT.TO','iShares Core Equity ETF','TFSA','180','$28.40','$32.10','$5,778','+$666','▲ +13.0%','1.1%'],
+        ['TD.TO','TD Bank Group','Unreg.','200','$72.30','$65.10','$13,020','-$1,440','▼ -9.9%','2.5%'],
+        ['VFV.TO','Vanguard S&P 500 ETF','RRSP','88','$116.20','$145.20','$12,778','+$2,552','▲ +24.9%','2.5%'],
+        ['ETH-CAD','Ethereum','Crypto','4.0','$2,890','$3,870','$15,480','+$3,920','▲ +33.9%','3.0%'],
+      ].map(([tick,name,acct,qty,acb,price,val,gl,glp,pct],i)=>(
+        <div key={tick} style={{ position:'absolute', left:0, top:64+i*44, right:0, height:42,
+          background: i%2===0 ? WF.bg : WF.bg2,
+          display:'flex', alignItems:'center', padding:'0 12px',
+          borderBottom:`1px solid ${WF.lineFaint}`, cursor:'pointer' }}
+          onMouseEnter={e => e.currentTarget.style.background = WF.fillBlue}
+          onMouseLeave={e => e.currentTarget.style.background = i%2===0 ? WF.bg : WF.bg2}>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:13, fontWeight:700 }}>{tick}</span>
+          <span style={{ flex:1.8, fontFamily:WF.font, fontSize:11, color:WF.textFaint }}>{name}</span>
+          <span style={{ flex:1 }}>
+            <span style={{ fontFamily:WF.font, fontSize:10, padding:'1px 5px',
+              border:`1px solid ${acct==='RRSP'?'#3b82f6':acct==='TFSA'?'#10b981':acct==='Crypto'?'#8b5cf6':'#f59e0b'}`,
+              borderRadius:3,
+              color: acct==='RRSP'?'#3b82f6':acct==='TFSA'?'#10b981':acct==='Crypto'?'#8b5cf6':'#f59e0b',
+              background: acct==='RRSP'?'#eff6ff':acct==='TFSA'?'#ecfdf5':acct==='Crypto'?'#f5f3ff':'#fffbeb'
+            }}>{acct}</span>
+          </span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right' }}>{qty}</span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right', color:WF.textFaint }}>{acb}</span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right' }}>{price}</span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right', fontWeight:600 }}>{val}</span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right',
+            color: gl.startsWith('+') ? '#059669' : '#dc2626' }}>
+            {gl.startsWith('+') ? '● ' : '■ '}{gl}
+          </span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right',
+            color: glp.includes('▲') ? '#059669' : '#dc2626' }}>{glp}</span>
+          <span style={{ flex:1, fontFamily:WF.font, fontSize:12, textAlign:'right', color:WF.textFaint }}>{pct}</span>
+          <span style={{ flex:0.7, fontFamily:WF.font, fontSize:11, textAlign:'right', color:WF.lineAccent }}>detail →</span>
+        </div>
+      ))}
+
+      {/* Summary bar */}
+      <Box x={0} y={504} w={W} h={56} fill={WF.fill} stroke={WF.line} r={0}>
+        <div style={{ position:'absolute', left:0, top:0, right:0, bottom:0, display:'flex', alignItems:'center', padding:'0 12px', gap:24 }}>
+          {[['Total portfolio','$512,840 CAD'],['Unrealized G/L','+$68,440 (+15.4%)'],['Positions','10'],['Accounts','4']].map(([lbl,val])=>(
+            <div key={lbl}>
+              <div style={{ fontFamily:WF.font, fontSize:10, color:WF.textFaint }}>{lbl}</div>
+              <div style={{ fontFamily:WF.font, fontSize:14, fontWeight:700,
+                color: val.startsWith('+') ? '#059669' : WF.text }}>{val}</div>
+            </div>
+          ))}
+          <div style={{ marginLeft:'auto', fontFamily:WF.font, fontSize:10, color:WF.textFaint, fontStyle:'italic' }}>
+            USD amounts shown with FX badge · click row for cost basis drawer
+          </div>
+        </div>
+      </Box>
+    </div>
+  );
+}
+
+// ─── SCREEN 3: HELOC & Leverage ──────────────────────────────────────────────
+
+function HelocScreen() {
+  const W = 900, H = 560;
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:WF.bg }}>
+      <Box x={0} y={0} w={W} h={40} fill={WF.bg2} stroke={WF.line} r={0}>
+        <T x={12} y={10} size={14} weight={700}>HELOC & Leverage</T>
+        <PrivacyBadge x={185} y={10} type="local"/>
+      </Box>
+
+      {/* KPI row */}
+      {[['HELOC limit','$150,000','cloud'],['Drawn','$94,000','cloud'],['Available','$56,000','cloud'],
+        ['Rate','6.95% p.a.','local'],['Monthly int.','$487','local'],['Tax-ded. YTD','$1,620','local'],['Leverage','1.42×','cloud']].map(([lbl,val,priv],i)=>(
+        <div key={lbl} style={{ position:'absolute', left:8+i*127, top:48, width:120, height:60,
+          background:WF.bg, border:`1.5px solid ${WF.line}`, borderRadius:2, padding:'4px 8px' }}>
+          <div style={{ fontFamily:WF.font, fontSize:9, color:WF.textFaint }}>{lbl}
+            <span style={{ marginLeft:3, fontSize:8, color: priv==='cloud'?WF.lineAccent:WF.local }}>
+              {priv==='cloud'?'☁':'🔒'}
+            </span>
+          </div>
+          <div style={{ fontFamily:WF.font, fontSize:17, fontWeight:700, color:WF.text, marginTop:2 }}>{val}</div>
+        </div>
+      ))}
+
+      {/* Drawdown ledger */}
+      <Box x={8} y={118} w={380} h={220} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={12} weight={700}>Drawdown ledger</T>
+        <div style={{ position:'absolute', left:0, top:26, right:0, height:18,
+          background:WF.fill, display:'flex', padding:'0 8px', fontFamily:WF.font, fontSize:10, color:WF.textFaint, alignItems:'center' }}>
+          <span style={{ flex:1 }}>Date</span><span style={{ flex:1 }}>Amount</span>
+          <span style={{ flex:1.5 }}>Purpose</span><span style={{ flex:1, textAlign:'right' }}>Tax-ded.</span>
+        </div>
+        {[
+          ['2026-01-15','+$30,000','Buy MSFT (unreg.)','Yes'],
+          ['2026-02-03','+$25,000','Buy ENB.TO (unreg.)','Yes'],
+          ['2026-03-08','+$20,000','Home reno (kitchen)','No'],
+          ['2026-03-22','-$5,000','Partial repayment','—'],
+          ['2026-04-01','+$24,000','Buy RY.TO (unreg.)','Yes'],
+        ].map(([dt,amt,pur,td],i)=>(
+          <div key={dt} style={{ position:'absolute', left:0, top:44+i*32, right:0, height:30,
+            display:'flex', alignItems:'center', padding:'0 8px',
+            background: i%2===0 ? 'transparent' : WF.bg2,
+            fontFamily:WF.font, fontSize:12 }}>
+            <span style={{ flex:1, color:WF.textFaint }}>{dt}</span>
+            <span style={{ flex:1, color: amt.startsWith('+') ? '#059669' : '#dc2626', fontWeight:600 }}>{amt}</span>
+            <span style={{ flex:1.5 }}>{pur}</span>
+            <span style={{ flex:1, textAlign:'right',
+              color: td==='Yes'?'#059669':td==='No'?'#dc2626':WF.textFaint }}>
+              {td==='Yes'?'● Yes':td==='No'?'■ No':'—'}</span>
+          </div>
+        ))}
+        <T x={8} y={205} size={10} color={WF.textFaint} italic>✓ = invested in income-producing assets = deductible interest</T>
+      </Box>
+
+      {/* Leverage trend chart */}
+      <Box x={396} y={118} w={496} h={220} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={12} weight={700}>Leverage ratio — 6-month trend</T>
+        <svg width={480} height={180} style={{ position:'absolute', top:26, left:8 }}>
+          {/* Grid */}
+          {[0,1,1.5,2].map((v,i)=>{
+            const y = 140 - v*60;
+            return <g key={v}>
+              <line x1={30} y1={y} x2={460} y2={y} stroke={WF.lineFaint} strokeWidth={1} strokeDasharray="4,4"/>
+              <text x={4} y={y+4} fontSize={9} fontFamily="Caveat" fill={WF.textFaint}>{v}×</text>
+            </g>;
+          })}
+          {/* Caution zone fill */}
+          <rect x={30} y={20} width={430} height={30} fill="#fee2e2" opacity={0.5}/>
+          <text x={34} y={32} fontSize={9} fontFamily="Caveat" fill="#dc2626">Caution zone (≥2×)</text>
+          {/* Line */}
+          <polyline
+            points="30,128 90,115 150,118 210,105 270,100 330,95 390,88 450,82"
+            fill="none" stroke={WF.lineAccent} strokeWidth={2.5}/>
+          {/* Data points */}
+          {[[30,128],[90,115],[150,118],[210,105],[270,100],[330,95],[390,88],[450,82]].map(([x,y],i)=>(
+            <circle key={i} cx={x} cy={y} r={4} fill={WF.lineAccent}/>
+          ))}
+          {/* Labels */}
+          {['Oct','Nov','Dec','Jan','Feb','Mar','Apr','Now'].map((m,i)=>(
+            <text key={m} x={30+i*60-8} y={158} fontSize={9} fontFamily="Caveat" fill={WF.textFaint}>{m}</text>
+          ))}
+          <text x={436} y={78} fontSize={11} fontFamily="Caveat" fontWeight="bold" fill={WF.lineAccent}>1.42×</text>
+        </svg>
+      </Box>
+
+      {/* What-if panel */}
+      <Box x={8} y={346} w={380} h={200} fill={WF.fillYellow} stroke={WF.line} strokeW={2}>
+        <T x={8} y={6} size={13} weight={700}>What-if: draw additional HELOC</T>
+        <T x={8} y={28} size={12} color={WF.textFaint}>Slide to simulate a draw</T>
+        {/* Slider */}
+        <div style={{ position:'absolute', left:12, top:50, right:12, height:8,
+          background:WF.fill, borderRadius:4, border:`1px solid ${WF.lineFaint}` }}>
+          <div style={{ width:'35%', height:'100%', background:'#f59e0b', borderRadius:4 }}/>
+          <div style={{ position:'absolute', left:'35%', top:-6, width:16, height:16,
+            background:'#f59e0b', borderRadius:'50%', transform:'translateX(-50%)',
+            border:`2px solid ${WF.bg}` }}/>
+        </div>
+        <T x={12} y={66} size={11} color={WF.textFaint}>$0</T>
+        <T x={310} y={66} size={11} color={WF.textFaint}>$56k max</T>
+        {/* Impact table */}
+        {[['Additional draw','+ $19,600'],['New HELOC balance','$113,600'],['New leverage ratio','1.68×'],['New monthly interest','$588 (+$101)'],['Safety','● Still safe zone']].map(([lbl,val],i)=>(
+          <div key={lbl} style={{ position:'absolute', left:8, top:82+i*22, right:8,
+            display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:12 }}>
+            <span style={{ color:WF.textFaint }}>{lbl}</span>
+            <span style={{ fontWeight:600, color: lbl.includes('ratio')?WF.lineAccent:WF.text }}>{val}</span>
+          </div>
+        ))}
+        <T x={8} y={192} size={10} color="#92400e" italic>Annotation: assumes rate stays at 6.95%</T>
+      </Box>
+
+      {/* Interest deductibility summary */}
+      <Box x={396} y={346} w={496} h={200} fill={WF.bg} stroke={WF.line}>
+        <T x={8} y={6} size={12} weight={700}>Interest deductibility summary</T>
+        <T x={8} y={26} size={11} color={WF.textFaint}>CRA: interest on money borrowed to earn income = deductible</T>
+        {/* Bar breakdown */}
+        <svg width={470} height={100} style={{ position:'absolute', top:44, left:12 }}>
+          <rect x={0} y={20} width={340} height={24} fill={WF.fillGreen} rx={2}/>
+          <rect x={340} y={20} width={100} height={24} fill={WF.fillRed} rx={2}/>
+          <rect x={0} y={20} width={440} height={24} fill="none" stroke={WF.lineFaint} rx={2} strokeWidth={1}/>
+          <text x={4} y={36} fontSize={11} fontFamily="Caveat" fill="#059669">$1,620 deductible (77%)</text>
+          <text x={344} y={36} fontSize={11} fontFamily="Caveat" fill="#dc2626">$480 (23%)</text>
+          <text x={0} y={60} fontSize={10} fontFamily="Caveat" fill="#059669">← Invested in unregistered income-producing assets</text>
+          <text x={330} y={60} fontSize={10} fontFamily="Caveat" fill="#dc2626">← Home reno</text>
+          <text x={0} y={80} fontSize={11} fontFamily="Caveat" fill={WF.textFaint}>YTD total interest paid: $2,100</text>
+          <text x={200} y={80} fontSize={11} fontFamily="Caveat" fill={WF.textFaint}>Est. tax saving (40%): $648</text>
+        </svg>
+        <T x={8} y={150} size={11} color={WF.textFaint} italic>Assumption: mixed-use HELOC; proportion tracked per drawdown</T>
+        <T x={8} y={168} size={10} color="#059669" weight={600}>● Recommend keeping a paper trail per draw (logged in ledger above)</T>
+        <T x={8} y={184} size={10} color={WF.textFaint} italic>Not tax advice. Consult your CPA.</T>
+      </Box>
+    </div>
+  );
+}
+
+// ─── SCREEN 4: Watchlist ──────────────────────────────────────────────────────
+
+function WatchlistScreen() {
+  const W = 900, H = 560;
+  const items = [
+    {tick:'ATD.TO',name:'Alimentation Couche-Tard',cur:72.40,target:68.00,lo52:58.10,hi52:80.20,vol:'Low',note:'Dip on guidance miss — watch Q4'},
+    {tick:'ENB.TO',name:'Enbridge Inc.',cur:57.10,target:52.00,lo52:48.40,hi52:60.80,vol:'Low',note:'Yield play; wait for rate cut'},
+    {tick:'VFV.TO',name:'Vanguard S&P 500 ETF',cur:145.20,target:138.00,lo52:112.30,hi52:149.40,vol:'Med',note:'Near ATH, wait for pullback'},
+    {tick:'CNR.TO',name:'CN Rail',cur:162.40,target:148.00,lo52:134.20,hi52:174.00,vol:'Low',note:'Recession exposure, patient'},
+    {tick:'NVDA',name:'NVIDIA Corp (USD)',cur:891.20,target:750.00,lo52:560.00,hi52:974.00,vol:'High',note:'High vol; small starter position only'},
+    {tick:'BCE.TO',name:'BCE Inc.',cur:33.80,target:30.00,lo52:28.60,hi52:48.20,vol:'Low',note:'Dividend cut risk; speculative'},
+  ];
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:WF.bg }}>
+      <Box x={0} y={0} w={W} h={40} fill={WF.bg2} stroke={WF.line} r={0}>
+        <T x={12} y={10} size={14} weight={700}>Watchlist — Potential Buys</T>
+        <PrivacyBadge x={250} y={10} type="cloud"/>
+        <T x={W-200} y={12} size={11} color={WF.textFaint} italic>target = limit price to enter position</T>
+      </Box>
+
+      {/* Column headers */}
+      <div style={{ position:'absolute', left:0, top:40, right:0, height:22,
+        background:WF.fill, display:'flex', alignItems:'center', padding:'0 12px',
+        fontFamily:WF.font, fontSize:11, color:WF.textFaint, borderBottom:`1px solid ${WF.lineFaint}` }}>
+        {['Ticker','Name','Current','Target','Gap %','52-wk Range','Vol.','Notes'].map((h,i)=>(
+          <span key={h} style={{ flex: i===1 ? 2 : i===7 ? 2 : 1, textAlign: i>1&&i<7 ? 'right' : 'left' }}>{h}</span>
+        ))}
+      </div>
+
+      {items.map(({tick,name,cur,target,lo52,hi52,vol,note},i)=>{
+        const gap = ((cur-target)/target*100).toFixed(1);
+        const rangeW = hi52-lo52;
+        const curPct = (cur-lo52)/rangeW*100;
+        const tgtPct = (target-lo52)/rangeW*100;
+        const volColor = vol==='High'?'#dc2626':vol==='Med'?'#f59e0b':'#059669';
+        const volShape = vol==='High'?'▲':vol==='Med'?'◆':'●';
+        return (
+          <div key={tick} style={{ position:'absolute', left:0, top:62+i*76, right:0, height:74,
+            background: i%2===0 ? WF.bg : WF.bg2,
+            borderBottom:`1px solid ${WF.lineFaint}`, display:'flex', alignItems:'center',
+            padding:'0 12px' }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontFamily:WF.font, fontSize:14, fontWeight:700 }}>{tick}</div>
+              {tick.includes('USD') && <span style={{ fontFamily:WF.font, fontSize:9, padding:'0 3px',
+                border:`1px solid #f59e0b`, borderRadius:2, color:'#f59e0b', background:'#fffbeb' }}>USD</span>}
+            </div>
+            <div style={{ flex:2, fontFamily:WF.font, fontSize:12, color:WF.textFaint }}>{name}</div>
+            <div style={{ flex:1, textAlign:'right', fontFamily:WF.font, fontSize:14, fontWeight:700 }}>${cur.toFixed(2)}</div>
+            <div style={{ flex:1, textAlign:'right', fontFamily:WF.font, fontSize:14, fontWeight:700, color:WF.lineAccent }}>${target.toFixed(2)}</div>
+            <div style={{ flex:1, textAlign:'right', fontFamily:WF.font, fontSize:13,
+              color: '#dc2626' }}>▼ {gap}%</div>
+            <div style={{ flex:1.5, padding:'0 8px' }}>
+              {/* 52-wk bar */}
+              <div style={{ height:8, background:WF.fill, borderRadius:4, position:'relative',
+                border:`1px solid ${WF.lineFaint}` }}>
+                <div style={{ position:'absolute', left:`${tgtPct}%`, top:-4, width:2, height:16, background:'#2563eb', opacity:0.8 }}/>
+                <div style={{ position:'absolute', left:`${curPct}%`, top:-4, width:2, height:16, background:'#f59e0b' }}/>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', fontFamily:WF.font, fontSize:9, color:WF.textFaint, marginTop:2 }}>
+                <span>${lo52}</span><span style={{ color:'#2563eb', fontSize:9 }}>target</span><span style={{ color:'#f59e0b', fontSize:9 }}>now</span><span>${hi52}</span>
+              </div>
+            </div>
+            <div style={{ flex:0.8, textAlign:'center' }}>
+              <span style={{ fontFamily:WF.font, fontSize:12, color:volColor }}>{volShape} {vol}</span>
+            </div>
+            <div style={{ flex:2, fontFamily:WF.font, fontSize:11, color:WF.textFaint, fontStyle:'italic' }}>{note}</div>
+          </div>
+        );
+      })}
+
+      {/* Footer */}
+      <Box x={0} y={518} w={W} h={42} fill={WF.fill} stroke={WF.line} r={0}>
+        <T x={12} y={12} size={11} color={WF.textFaint} italic>blue line = target buy | yellow = current price | vol badge = ▲ high ◆ med ● low</T>
+        <div style={{ position:'absolute', right:12, top:10, display:'flex', gap:8 }}>
+          <div style={{ padding:'1px 8px', border:`1px solid ${WF.lineFaint}`, borderRadius:3,
+            fontSize:11, fontFamily:WF.font, color:WF.lineAccent }}>+ Add ticker</div>
+        </div>
+      </Box>
+    </div>
+  );
+}
+
+// ─── SCREEN 5: Net Worth Ledger ──────────────────────────────────────────────
+
+function NetWorthScreen() {
+  const W = 900, H = 620;
+  const [propVal, setPropVal] = React.useState(880000);
+  const [mortgageVal, setMortgageVal] = React.useState(412000);
+
+  const portfolio = 512840;
+  const cash = 22400;
+  const otherAssets = 0;
+  const heloc = 94000;
+  const otherDebt = 0;
+
+  const totalAssets = portfolio + propVal + cash + otherAssets;
+  const totalLiabilities = mortgageVal + heloc + otherDebt;
+  const netWorth = totalAssets - totalLiabilities;
+  const dte = totalLiabilities / (totalAssets - totalLiabilities);
+
+  const fmt = (n) => '$' + Math.abs(Math.round(n)).toLocaleString('en-CA');
+  const barMax = totalAssets;
+
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:'#111', fontFamily:WF.font }}>
+
+      {/* Top bar — V2 style */}
+      <div style={{ position:'absolute', left:0, top:0, right:0, height:44,
+        background:'#1c1c1c', borderBottom:'1px solid #333',
+        display:'flex', alignItems:'center', padding:'0 20px', gap:16 }}>
+        <span style={{ fontFamily:WF.font, fontSize:15, color:'#fff', fontWeight:700, marginRight:16 }}>IM</span>
+        {['Cockpit','Holdings','HELOC','Net Worth','Watchlist'].map((lbl,i)=>(
+          <span key={lbl} style={{ fontFamily:WF.font, fontSize:13,
+            color: i===3 ? '#60a5fa' : '#777',
+            borderBottom: i===3 ? '2px solid #60a5fa' : 'none', paddingBottom:2 }}>{lbl}</span>
+        ))}
+        <span style={{ marginLeft:'auto', fontFamily:WF.font, fontSize:11,
+          color:'#60a5fa', border:'1px solid #60a5fa', borderRadius:3, padding:'1px 6px' }}>☁ Public</span>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ position:'absolute', left:0, top:44, right:0, height:64,
+        background:'#181818', borderBottom:'1px solid #333', display:'flex', alignItems:'center' }}>
+        {[
+          ['Net Worth', fmt(netWorth), 'total assets − liabilities', 'cloud'],
+          ['Total Assets', fmt(totalAssets), 'portfolio + property + cash', 'cloud'],
+          ['Total Liabilities', fmt(totalLiabilities), 'mortgage + HELOC', 'cloud'],
+          ['Debt-to-Equity', dte.toFixed(2)+'×', 'liabilities / equity', 'cloud'],
+          ['Mortgage LTV', (mortgageVal/propVal*100).toFixed(1)+'%', 'vs property value', 'local'],
+        ].map(([lbl,val,sub,priv],i,arr)=>(
+          <div key={lbl} style={{ flex:1, padding:'0 16px', borderRight: i<arr.length-1 ? '1px solid #2a2a2a' : 'none' }}>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', display:'flex', alignItems:'center', gap:4 }}>
+              {lbl}
+              <span style={{ fontSize:8, color: priv==='cloud'?'#60a5fa':'#f87171',
+                border:`1px solid ${priv==='cloud'?'#1d4ed8':'#dc2626'}`,
+                borderRadius:2, padding:'0 2px' }}>{priv==='cloud'?'☁':'🔒'}</span>
+            </div>
+            <div style={{ fontFamily:WF.font, fontSize:16, fontWeight:700,
+              color: lbl==='Net Worth'?'#60a5fa': lbl==='Total Liabilities'?'#f87171':'#e5e7eb' }}>{val}</div>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555' }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Left col: Asset / Liability ledger */}
+      <div style={{ position:'absolute', left:12, top:120, width:400, bottom:12,
+        background:'#181818', border:'1px solid #333', borderRadius:2 }}>
+        <div style={{ padding:'8px 12px', borderBottom:'1px solid #2a2a2a',
+          fontFamily:WF.font, fontSize:13, color:'#aaa', fontWeight:600 }}>
+          Asset / Liability ledger
+          <span style={{ float:'right', fontSize:10, color:'#555', fontStyle:'italic' }}>✎ = editable</span>
+        </div>
+
+        {/* ASSETS */}
+        <div style={{ padding:'6px 12px 2px', fontFamily:WF.font, fontSize:11,
+          color:'#10b981', letterSpacing:1, borderBottom:'1px solid #2a2a2a' }}>ASSETS</div>
+
+        {[
+          { label:'Portfolio (auto)', value: fmt(portfolio), sub:'RRSP + TFSA + Unreg. + Crypto', editable:false, privacy:'local' },
+          { label:'Cash / HISA', value: fmt(cash), sub:'manual entry', editable:true, privacy:'local' },
+          { label:'Other assets', value:'$0', sub:'manual entry', editable:true, privacy:'local' },
+        ].map(({label,value,sub,editable,privacy})=>(
+          <div key={label} style={{ display:'flex', alignItems:'center', padding:'8px 12px',
+            borderBottom:'1px solid #222', fontFamily:WF.font }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, color:'#e5e7eb' }}>{label}
+                {editable && <span style={{ marginLeft:6, fontSize:10, color:'#555' }}>✎</span>}
+              </div>
+              <div style={{ fontSize:10, color:'#555', fontStyle:'italic' }}>{sub}</div>
+            </div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#e5e7eb' }}>{value}</div>
+            <div style={{ marginLeft:8, fontSize:8, color: privacy==='cloud'?'#60a5fa':'#f87171',
+              border:`1px solid ${privacy==='cloud'?'#1d4ed8':'#dc2626'}`,
+              borderRadius:2, padding:'0 2px' }}>{privacy==='cloud'?'☁':'🔒'}</div>
+          </div>
+        ))}
+
+        {/* Property — manual entry */}
+        <div style={{ padding:'8px 12px', borderBottom:'1px solid #222', background:'#1e2a1e' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+            <div>
+              <div style={{ fontFamily:WF.font, fontSize:13, color:'#e5e7eb' }}>
+                Primary residence ✎
+                <span style={{ marginLeft:6, fontSize:9, color:'#555', fontStyle:'italic' }}>manual</span>
+              </div>
+              <div style={{ fontFamily:WF.font, fontSize:10, color:'#555' }}>Enter current estimated value</div>
+            </div>
+            <div style={{ fontFamily:WF.font, fontSize:14, fontWeight:700, color:'#10b981' }}>{fmt(propVal)}</div>
+          </div>
+          {/* Slider input mock */}
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ flex:1, height:6, background:'#2a2a2a', borderRadius:3, position:'relative' }}>
+              <div style={{ width:`${(propVal-400000)/(1500000-400000)*100}%`, height:'100%',
+                background:'#10b981', borderRadius:3 }}/>
+              <div style={{ position:'absolute', left:`${(propVal-400000)/(1500000-400000)*100}%`,
+                top:-5, width:14, height:14, background:'#10b981', borderRadius:'50%',
+                transform:'translateX(-50%)', border:'2px solid #111' }}/>
+            </div>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', whiteSpace:'nowrap' }}>$400k – $1.5M</div>
+          </div>
+          <div style={{ marginTop:4, fontFamily:WF.font, fontSize:10, color:'#555', fontStyle:'italic' }}>
+            ← drag or type · no API integration · your estimate
+          </div>
+        </div>
+
+        {/* Assets total */}
+        <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 12px',
+          borderBottom:'1px solid #333', background:'#1a1a1a',
+          fontFamily:WF.font, fontSize:13, fontWeight:700, color:'#10b981' }}>
+          <span>Total Assets</span><span>{fmt(totalAssets)}</span>
+        </div>
+
+        {/* LIABILITIES */}
+        <div style={{ padding:'6px 12px 2px', fontFamily:WF.font, fontSize:11,
+          color:'#f87171', letterSpacing:1, borderBottom:'1px solid #2a2a2a' }}>LIABILITIES</div>
+
+        {/* Mortgage manual entry */}
+        <div style={{ padding:'8px 12px', borderBottom:'1px solid #222', background:'#2a1e1e' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+            <div>
+              <div style={{ fontFamily:WF.font, fontSize:13, color:'#e5e7eb' }}>
+                Mortgage balance ✎
+                <span style={{ marginLeft:6, fontSize:9, color:'#555', fontStyle:'italic' }}>manual</span>
+              </div>
+              <div style={{ fontFamily:WF.font, fontSize:10, color:'#555' }}>Outstanding principal</div>
+            </div>
+            <div style={{ fontFamily:WF.font, fontSize:14, fontWeight:700, color:'#f87171' }}>({fmt(mortgageVal)})</div>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ flex:1, height:6, background:'#2a2a2a', borderRadius:3, position:'relative' }}>
+              <div style={{ width:`${(mortgageVal/800000)*100}%`, height:'100%',
+                background:'#f87171', borderRadius:3 }}/>
+              <div style={{ position:'absolute', left:`${(mortgageVal/800000)*100}%`,
+                top:-5, width:14, height:14, background:'#f87171', borderRadius:'50%',
+                transform:'translateX(-50%)', border:'2px solid #111' }}/>
+            </div>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', whiteSpace:'nowrap' }}>$0 – $800k</div>
+          </div>
+        </div>
+
+        {[
+          { label:'HELOC (auto)', value: fmt(heloc), sub:'from HELOC screen', editable:false },
+          { label:'Other debt', value:'$0', sub:'manual entry', editable:true },
+        ].map(({label,value,sub,editable})=>(
+          <div key={label} style={{ display:'flex', alignItems:'center', padding:'8px 12px',
+            borderBottom:'1px solid #222', fontFamily:WF.font }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, color:'#e5e7eb' }}>{label}
+                {editable && <span style={{ marginLeft:6, fontSize:10, color:'#555' }}>✎</span>}
+              </div>
+              <div style={{ fontSize:10, color:'#555', fontStyle:'italic' }}>{sub}</div>
+            </div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#f87171' }}>({value})</div>
+          </div>
+        ))}
+
+        {/* Liabilities total */}
+        <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 12px',
+          borderBottom:'1px solid #333', background:'#1a1a1a',
+          fontFamily:WF.font, fontSize:13, fontWeight:700, color:'#f87171' }}>
+          <span>Total Liabilities</span><span>({fmt(totalLiabilities)})</span>
+        </div>
+
+        {/* Net Worth final */}
+        <div style={{ display:'flex', justifyContent:'space-between', padding:'10px 12px',
+          fontFamily:WF.font, fontSize:16, fontWeight:700, color:'#60a5fa' }}>
+          <span>NET WORTH</span><span>{fmt(netWorth)}</span>
+        </div>
+      </div>
+
+      {/* Right col: visualization */}
+      <div style={{ position:'absolute', left:424, top:120, right:12, bottom:12, display:'flex', flexDirection:'column', gap:12 }}>
+
+        {/* Stacked asset/liability bar */}
+        <div style={{ background:'#181818', border:'1px solid #333', borderRadius:2, padding:'12px 16px' }}>
+          <div style={{ fontFamily:WF.font, fontSize:13, color:'#aaa', marginBottom:10, fontWeight:600 }}>
+            Assets vs Liabilities
+          </div>
+          {/* Assets bar */}
+          <div style={{ marginBottom:6 }}>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', marginBottom:3 }}>Assets {fmt(totalAssets)}</div>
+            <div style={{ height:28, background:'#2a2a2a', borderRadius:3, display:'flex', overflow:'hidden' }}>
+              <div style={{ width:`${portfolio/totalAssets*100}%`, background:'#3b82f6', opacity:0.8 }}/>
+              <div style={{ width:`${propVal/totalAssets*100}%`, background:'#10b981', opacity:0.8 }}/>
+              <div style={{ width:`${cash/totalAssets*100}%`, background:'#a78bfa', opacity:0.8 }}/>
+            </div>
+            <div style={{ display:'flex', gap:12, marginTop:4 }}>
+              {[['#3b82f6','Portfolio'],['#10b981','Property'],['#a78bfa','Cash']].map(([c,l])=>(
+                <div key={l} style={{ display:'flex', alignItems:'center', gap:4, fontFamily:WF.font, fontSize:10, color:'#555' }}>
+                  <div style={{ width:8, height:8, background:c, borderRadius:1 }}/>{l}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Liabilities bar */}
+          <div style={{ marginBottom:6 }}>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', marginBottom:3 }}>Liabilities {fmt(totalLiabilities)}</div>
+            <div style={{ height:28, background:'#2a2a2a', borderRadius:3, display:'flex', overflow:'hidden' }}>
+              <div style={{ width:`${mortgageVal/totalAssets*100}%`, background:'#ef4444', opacity:0.8 }}/>
+              <div style={{ width:`${heloc/totalAssets*100}%`, background:'#f97316', opacity:0.8 }}/>
+            </div>
+            <div style={{ display:'flex', gap:12, marginTop:4 }}>
+              {[['#ef4444','Mortgage'],['#f97316','HELOC']].map(([c,l])=>(
+                <div key={l} style={{ display:'flex', alignItems:'center', gap:4, fontFamily:WF.font, fontSize:10, color:'#555' }}>
+                  <div style={{ width:8, height:8, background:c, borderRadius:1 }}/>{l}
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Equity bar */}
+          <div>
+            <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', marginBottom:3 }}>Equity (net worth) {fmt(netWorth)}</div>
+            <div style={{ height:14, background:'#2a2a2a', borderRadius:3, overflow:'hidden' }}>
+              <div style={{ width:`${netWorth/totalAssets*100}%`, background:'#60a5fa', opacity:0.7 }}/>
+            </div>
+          </div>
+        </div>
+
+        {/* Debt-to-equity gauge */}
+        <div style={{ background:'#181818', border:'1px solid #333', borderRadius:2, padding:'12px 16px' }}>
+          <div style={{ fontFamily:WF.font, fontSize:13, color:'#aaa', marginBottom:8, fontWeight:600 }}>
+            Household Debt-to-Equity
+          </div>
+          <svg width={'100%'} height={90} viewBox="0 0 440 90">
+            {/* Track */}
+            <path d="M20,70 A160,160 0 0,1 420,70" fill="none" stroke="#2a2a2a" strokeWidth={20} strokeLinecap="round"/>
+            {/* Safe zone (green) 0–0.5 */}
+            <path d="M20,70 A160,160 0 0,1 167,14" fill="none" stroke="#10b981" strokeWidth={20} strokeLinecap="round" opacity={0.5}/>
+            {/* Caution 0.5–1 */}
+            <path d="M167,14 A160,160 0 0,1 273,14" fill="none" stroke="#f59e0b" strokeWidth={20} opacity={0.5}/>
+            {/* High 1+ */}
+            <path d="M273,14 A160,160 0 0,1 420,70" fill="none" stroke="#ef4444" strokeWidth={20} opacity={0.5}/>
+            {/* Needle — dte ~0.61 */}
+            <line x1={220} y1={70} x2={162} y2={20} stroke="#e5e7eb" strokeWidth={3}/>
+            <circle cx={220} cy={70} r={6} fill="#e5e7eb"/>
+            <text x={190} y={60} fontSize={18} fontFamily="Caveat" fontWeight="bold" fill="#e5e7eb">{dte.toFixed(2)}×</text>
+            <text x={12} y={86} fontSize={9} fontFamily="Caveat" fill="#10b981">Low (0–0.5)</text>
+            <text x={178} y={86} fontSize={9} fontFamily="Caveat" fill="#f59e0b">Caution (0.5–1)</text>
+            <text x={358} y={86} fontSize={9} fontFamily="Caveat" fill="#ef4444">High (1+)</text>
+          </svg>
+          <div style={{ fontFamily:WF.font, fontSize:10, color:'#555', fontStyle:'italic' }}>
+            Liabilities ÷ Equity · household benchmark: keep below 1.0
+          </div>
+        </div>
+
+        {/* Mortgage detail */}
+        <div style={{ background:'#181818', border:'1px solid #333', borderRadius:2, padding:'12px 16px', flex:1 }}>
+          <div style={{ fontFamily:WF.font, fontSize:13, color:'#aaa', marginBottom:8, fontWeight:600 }}>
+            Mortgage & Property detail ✎
+          </div>
+          {[
+            ['Property value (est.)', fmt(propVal), '#e5e7eb'],
+            ['Mortgage balance', fmt(mortgageVal), '#f87171'],
+            ['Home equity', fmt(propVal - mortgageVal), '#10b981'],
+            ['LTV ratio', (mortgageVal/propVal*100).toFixed(1)+'%', '#f59e0b'],
+            ['Renewal date', 'Mar 2027 (manual)', '#777'],
+            ['Rate', '4.89% fixed (manual)', '#777'],
+          ].map(([lbl,val,col])=>(
+            <div key={lbl} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0',
+              borderBottom:'1px solid #222', fontFamily:WF.font, fontSize:12 }}>
+              <span style={{ color:'#666' }}>{lbl}</span>
+              <span style={{ color:col, fontWeight:600 }}>{val}</span>
+            </div>
+          ))}
+          <div style={{ marginTop:8, fontFamily:WF.font, fontSize:10, color:'#555', fontStyle:'italic' }}>
+            ✎ All property fields are manual entry — no third-party valuation API in v1
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// ─── SCREEN 5: Login Gate ─────────────────────────────────────────────────────
+
+function LoginScreen() {
+  const W = 480, H = 400;
+  return (
+    <div style={{ position:'relative', width:W, height:H, background:WF.bg, fontFamily:WF.font,
+      display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ width:320, padding:24, border:`1.5px solid ${WF.line}`, borderRadius:4, background:WF.bg }}>
+        <div style={{ fontFamily:WF.font, fontSize:24, fontWeight:700, marginBottom:4 }}>InvestMonitor</div>
+        <div style={{ fontFamily:WF.font, fontSize:12, color:WF.textFaint, marginBottom:20 }}>Personal portfolio. Local-first.</div>
+        {/* Cloud-safe summary visible even here */}
+        <div style={{ background:WF.fillBlue, border:`1px solid #93c5fd`, borderRadius:3,
+          padding:'8px 10px', marginBottom:16, fontFamily:WF.font, fontSize:11 }}>
+          <span style={{ color:WF.lineAccent, fontWeight:700 }}>☁ Public summary (Path C)</span><br/>
+          <span style={{ color:WF.textFaint }}>Net Worth: $847,320 · Leverage: 1.42× · 3 watchlist alerts</span>
+        </div>
+        {/* Password field */}
+        <div style={{ border:`1.5px solid ${WF.line}`, borderRadius:3, padding:'8px 10px',
+          fontFamily:WF.font, fontSize:13, color:WF.textFaint, marginBottom:12, background:WF.bg2 }}>
+          ••••••••  [password field]
+        </div>
+        <div style={{ background:WF.lineAccent, color:'#fff', borderRadius:3, padding:'8px 10px',
+          fontFamily:WF.font, fontSize:14, fontWeight:700, textAlign:'center', cursor:'pointer',
+          marginBottom:12 }}>Unlock → local data</div>
+        <div style={{ fontFamily:WF.font, fontSize:10, color:WF.textFaint, fontStyle:'italic' }}>
+          Full holdings, ACB, and HELOC details are local-only (Path C).<br/>
+          Tailscale required for remote access.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+function App() {
+  return (
+    <DesignCanvas title="Investments Monitor — Wireframes">
+
+      <DCSection id="cockpit" title="Screen 1: Cockpit (3 layout options)">
+        <DCArtboard id="c1" label="V1 Desktop Sidebar (Bloomberg-dense)" width={900} height={580}>
+          <CockpitV1/>
+        </DCArtboard>
+        <DCArtboard id="c2" label="V2 Dark Command Strip (Linear-style)" width={900} height={580}>
+          <CockpitV2/>
+        </DCArtboard>
+        <DCArtboard id="c3" label="V3 Mobile Card Stack (Path C — cloud/local split)" width={390} height={580}>
+          <CockpitV3/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="holdings" title="Screen 2: Holdings Table">
+        <DCArtboard id="h1" label="Holdings — sortable, filterable, local-only" width={900} height={560}>
+          <HoldingsScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="heloc" title="Screen 3: HELOC & Leverage">
+        <DCArtboard id="hl1" label="HELOC — drawdown ledger + what-if slider + deductibility" width={900} height={560}>
+          <HelocScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="watchlist" title="Screen 4: Watchlist">
+        <DCArtboard id="w1" label="Watchlist — target vs current, 52-wk range, vol badge" width={900} height={560}>
+          <WatchlistScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="networth" title="Screen 5: Net Worth Ledger">
+        <DCArtboard id="nw1" label="Net Worth — asset/liability ledger + manual property entry" width={900} height={620}>
+          <NetWorthScreen/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="login" title="Screen 6: Login Gate">
+        <DCArtboard id="lg1" label="Login — Path C: public summary visible pre-auth" width={480} height={400}>
+          <LoginScreen/>
+        </DCArtboard>
+      </DCSection>
+
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<div id="root" style="width:100vw;height:100vh;overflow:hidden;"></div>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#1a1a1a"/>
+    <rect x="8" y="8" width="50" height="28" rx="2" fill="#2563eb" opacity="0.3"/>
+    <rect x="8" y="40" width="24" height="14" rx="2" fill="#10b981" opacity="0.4"/>
+    <rect x="36" y="40" width="24" height="14" rx="2" fill="#f59e0b" opacity="0.4"/>
+    <rect x="64" y="8" width="48" height="46" rx="2" fill="#374151" opacity="0.6"/>
+    <text x="12" y="22" font-size="8" fill="#60a5fa" font-family="monospace">$847k</text>
+    <text x="12" y="32" font-size="6" fill="#9ca3af" font-family="monospace">Net Worth</text>
+    <text x="12" y="51" font-size="6" fill="#10b981" font-family="monospace">1.42×</text>
+    <text x="40" y="51" font-size="6" fill="#f59e0b" font-family="monospace">HELOC</text>
+  </svg>
+</template>
+</body>
+</html>
