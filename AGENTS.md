@@ -4,7 +4,7 @@ Mirrors `CLAUDE.md` for non-Claude agents.
 
 ## What This Project Is
 
-Streamlit portfolio monitoring app with HELOC leverage analysis. Market data via external API.
+Streamlit portfolio monitoring app with HELOC + margin leverage analysis. Market data via yfinance. FX via Bank of Canada Valet.
 
 ## Rules
 

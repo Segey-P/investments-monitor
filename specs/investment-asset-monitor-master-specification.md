@@ -67,7 +67,7 @@ Regenerated on every scheduled refresh. **No absolute dollar totals.** Proportio
   },
   "allocations": {
     "by_account":     { "RRSP": 0.38, "TFSA": 0.24, "Unreg": 0.28, "Crypto": 0.10 },
-    "by_asset_class": { "Cash": 0.04, "Stocks": 0.45, "ETF": 0.35, "LeveragedETF": 0.06, "Crypto": 0.10 },
+    "by_asset_class": { "Cash": 0.04, "Stock": 0.45, "ETF": 0.35, "LeveragedETF": 0.06, "Crypto": 0.10 },
     "by_country":     { "CA": 0.62, "US": 0.28, "Other": 0.10 },
     "by_currency":    { "CAD": 0.80, "USD": 0.20 }
   },

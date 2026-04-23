@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-- **Status:** Discovery
+- **Status:** Phase 1 — Data backbone (specs locked 2026-04-23; awaiting real Questrade CSV to finalize import parser)
 - **Repo:** github.com/Segey-P/investments-monitor
-- **Purpose:** Portfolio monitoring with HELOC leverage analysis. Tracks holdings, cost basis, and return metrics.
-- **Stack:** Streamlit + market data API (TBD)
+- **Purpose:** Portfolio monitoring with HELOC + margin leverage analysis. Tracks holdings, cost basis, and return metrics.
+- **Stack:** Streamlit + SQLite + yfinance (equity/crypto) + Bank of Canada Valet (USD/CAD FX)
 - **Deploy:** Streamlit Community Cloud
 
 ## User Profile

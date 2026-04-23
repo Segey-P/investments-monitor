@@ -18,7 +18,7 @@
 
 ### Phase 1 — Data backbone (local only, no auth)
 - [ ] Scaffold `app/`, `scripts/`, `data/` layout; add `.gitignore` for `data/`
-- [ ] SQLite schema per Module 1 §2: `accounts`, `holdings`, `prices`, `heloc_draws`, `heloc_account`, `cash_aggregate`, `property`, `mortgage`, `watchlist`, `settings`, `snapshots`
+- [ ] SQLite schema per Module 1 §2: `accounts`, `holdings`, `prices`, `heloc_draws`, `heloc_account`, `margin_account`, `cash_aggregate`, `property`, `mortgage`, `watchlist`, `imports`, `settings`, `snapshots`
 - [ ] Seed script with mock Questrade-shaped CSV fixture
 - [ ] `BrokerImporter` base + `QuestradeImporter` stub (fully wire after user provides real export)
 - [ ] yfinance wrapper with 15-min cache + retry
@@ -26,18 +26,18 @@
 - [ ] Streamlit app skeleton (V2 dark palette, top nav, account pills, KPI strip)
 - [ ] Cockpit screen reading live data (no auth yet)
 
-### Phase 2 — Holdings + HELOC + calculations
+### Phase 2 — Holdings + Leverage + calculations
 - [ ] Holdings screen (sortable, filterable, CAD conversion for USD tickers)
-- [ ] HELOC screen: drawdown ledger, KPIs, what-if slider
-- [ ] Leverage ratio, unrealized G/L, D/E, LTV calcs
+- [ ] Leverage screen (HELOC + Margin tabs): drawdown ledger (HELOC), balance forms, KPIs, what-if slider
+- [ ] Leverage ratio (incl. margin), unrealized G/L, D/E (incl. margin), LTV calcs
 - [ ] Asset-class tagging during import + user review
 - [ ] Multi-dim allocation widget (account / asset class / country / currency)
-- [ ] Manual-entry forms: HELOC, cash, property, mortgage
+- [ ] Manual-entry forms: HELOC, margin, cash, property, mortgage
 
 ### Phase 3 — Watchlist + Net Worth + Settings
 - [ ] Watchlist screen with target vs current, 52-wk range, vol badge
 - [ ] Net Worth screen: ledger + D/E gauge + stacked bars
-- [ ] Settings screen: password, session timeout, HELOC rate, refresh interval, FX display, imports list, regenerate summary button
+- [ ] Settings screen: password, session timeout, HELOC + margin borrowing settings, refresh interval, FX display, imports list, regenerate summary button
 - [ ] Auth + session timeout with 60-second warning banner
 - [ ] Colorblind-safe G/L treatment applied globally
 

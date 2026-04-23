@@ -51,6 +51,8 @@ scripts/importers/
 3. Parser writes/updates rows in `holdings`. Existing rows for the same `(account_id, ticker)` are replaced (ACB from the export is authoritative).
 4. Prices fetched immediately for any new tickers.
 
+**Format:** Questrade **Position** CSV (holdings snapshot). Activity CSV (transaction log requiring running-ACB rollup) is deferred to v1.
+
 **Questrade-specific mapping: pending a sample export file.** The user will provide a real Questrade CSV; the parser's column map will be defined from that. Target fields to extract per row: account type, ticker (normalized to Yahoo format, e.g. `RY` → `RY.TO`), quantity, average cost (ACB per share), currency.
 
 ### 2.2 IBKR (deferred)
@@ -78,8 +80,9 @@ Known-ETF list lives in `scripts/importers/etf_tickers.py`, hand-curated, editab
 
 ## 4. FX
 
-- Source: Bank of Canada daily USD/CAD rate (Valet API or web scrape fallback — TBD at implementation time).
+- Source: Bank of Canada Valet — `https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json`.
 - Fetched once per day. Cached in `settings` table.
+- Failure: retain last good rate, surface stale badge (same pattern as yfinance).
 - No historical FX in v0.1.
 
 ## 5. Scheduler (macOS `launchd`)
@@ -131,5 +134,4 @@ For development without real exports:
 
 - Questrade CSV column mapping — waiting on real export file from user.
 - IBKR parser — later.
-- BOC FX fetch method — decide Valet API vs scrape at implementation.
 - Snapshot retention policy (keep N days?) — not urgent; negligible size.
