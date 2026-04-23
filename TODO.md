@@ -1,16 +1,16 @@
 # Investments Monitor — TODO
 
 ## Top 10 Prioritized Tasks
-1. [ ] **Scaffold Layout:** Create `app/`, `scripts/`, `data/` and setup `.gitignore`
-2. [ ] **SQLite Schema:** Implement Module 1 §2 schema (accounts, holdings, heloc, etc.)
-3. [ ] **Seed Data:** Create seed script with mock Questrade-shaped CSV fixture
-4. [ ] **Broker Importers:** Build `BrokerImporter` base and `QuestradeImporter` stub
-5. [ ] **Market Data:** Implement `yfinance` wrapper with caching and BOC FX fetch
-6. [ ] **UI Skeleton:** Build Streamlit skeleton (V2 dark palette, nav, account pills)
-7. [ ] **Cockpit Screen:** Connect "Cockpit" to live SQLite data (no auth yet)
-8. [ ] **Holdings Screen:** Implement holdings view with CAD conversion for USD tickers
-9. [ ] **Deployment Prep:** Develop `scripts/refresh.py` for summary regeneration
-10. [ ] **Public Summary:** Implement `public/summary.json` generator for Path C deployment
+- [ ] **Scaffold Layout:** Create `app/`, `scripts/`, `data/` and setup `.gitignore`
+- [ ] **SQLite Schema:** Implement Module 1 §2 schema (accounts, holdings, heloc, etc.)
+- [ ] **Seed Data:** Create seed script with mock Questrade-shaped CSV fixture
+- [ ] **Broker Importers:** Build `BrokerImporter` base and `QuestradeImporter` stub
+- [ ] **Market Data:** Implement `yfinance` wrapper with caching and BOC FX fetch
+- [ ] **UI Skeleton:** Build Streamlit skeleton (V2 dark palette, nav, account pills)
+- [ ] **Cockpit Screen:** Connect "Cockpit" to live SQLite data (no auth yet)
+- [ ] **Holdings Screen:** Implement holdings view with CAD conversion for USD tickers
+- [ ] **Deployment Prep:** Develop `scripts/refresh.py` for summary regeneration
+- [ ] **Public Summary:** Implement `public/summary.json` generator for Path C deployment
 
 ---
 
