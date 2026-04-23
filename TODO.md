@@ -1,19 +1,22 @@
-# Next Steps
+# Investments Monitor — TODO
 
-Specs are locked. Build proceeds in phases; each phase is a shippable slice.
+## Top 10 Prioritized Tasks
+1. [ ] **Scaffold Layout:** Create `app/`, `scripts/`, `data/` and setup `.gitignore`
+2. [ ] **SQLite Schema:** Implement Module 1 §2 schema (accounts, holdings, heloc, etc.)
+3. [ ] **Seed Data:** Create seed script with mock Questrade-shaped CSV fixture
+4. [ ] **Broker Importers:** Build `BrokerImporter` base and `QuestradeImporter` stub
+5. [ ] **Market Data:** Implement `yfinance` wrapper with caching and BOC FX fetch
+6. [ ] **UI Skeleton:** Build Streamlit skeleton (V2 dark palette, nav, account pills)
+7. [ ] **Cockpit Screen:** Connect "Cockpit" to live SQLite data (no auth yet)
+8. [ ] **Holdings Screen:** Implement holdings view with CAD conversion for USD tickers
+9. [ ] **Deployment Prep:** Develop `scripts/refresh.py` for summary regeneration
+10. [ ] **Public Summary:** Implement `public/summary.json` generator for Path C deployment
 
-## Phase 0 — Decisions (locked)
+---
 
-- [x] Re-skin all screens in V2 "Dark Command Strip"
-- [x] Stack: Streamlit v0.1 → re-platform decision after Phase 4
-- [x] Storage: SQLite, `.gitignored`, no app-level encryption
-- [x] Privacy: Path C — tickers + proportions + public prices only in cloud summary
-- [x] HELOC tax-deductibility: out of scope permanently
-- [x] Scheduler: macOS `launchd`
-- [x] First broker: Questrade (awaiting sample CSV from user)
+## Phase Breakdown
 
-## Phase 1 — Data backbone (local only, no auth)
-
+### Phase 1 — Data backbone (local only, no auth)
 - [ ] Scaffold `app/`, `scripts/`, `data/` layout; add `.gitignore` for `data/`
 - [ ] SQLite schema per Module 1 §2: `accounts`, `holdings`, `prices`, `heloc_draws`, `heloc_account`, `cash_aggregate`, `property`, `mortgage`, `watchlist`, `settings`, `snapshots`
 - [ ] Seed script with mock Questrade-shaped CSV fixture
@@ -23,8 +26,7 @@ Specs are locked. Build proceeds in phases; each phase is a shippable slice.
 - [ ] Streamlit app skeleton (V2 dark palette, top nav, account pills, KPI strip)
 - [ ] Cockpit screen reading live data (no auth yet)
 
-## Phase 2 — Holdings + HELOC + calculations
-
+### Phase 2 — Holdings + HELOC + calculations
 - [ ] Holdings screen (sortable, filterable, CAD conversion for USD tickers)
 - [ ] HELOC screen: drawdown ledger, KPIs, what-if slider
 - [ ] Leverage ratio, unrealized G/L, D/E, LTV calcs
@@ -32,16 +34,14 @@ Specs are locked. Build proceeds in phases; each phase is a shippable slice.
 - [ ] Multi-dim allocation widget (account / asset class / country / currency)
 - [ ] Manual-entry forms: HELOC, cash, property, mortgage
 
-## Phase 3 — Watchlist + Net Worth + Settings
-
+### Phase 3 — Watchlist + Net Worth + Settings
 - [ ] Watchlist screen with target vs current, 52-wk range, vol badge
 - [ ] Net Worth screen: ledger + D/E gauge + stacked bars
 - [ ] Settings screen: password, session timeout, HELOC rate, refresh interval, FX display, imports list, regenerate summary button
 - [ ] Auth + session timeout with 60-second warning banner
 - [ ] Colorblind-safe G/L treatment applied globally
 
-## Phase 4 — Path C deploy
-
+### Phase 4 — Path C deploy
 - [ ] `scripts/refresh.py` — full refresh + summary regen + `git push`
 - [ ] `launchd` plist + install docs
 - [ ] `public/summary.json` generator matching master-spec §4.2 schema exactly
@@ -50,27 +50,12 @@ Specs are locked. Build proceeds in phases; each phase is a shippable slice.
 - [ ] Login screen pre-auth public summary
 - [ ] Smoke test: Mac-off scenario (stale banner appears in cloud)
 
-## Phase 5 — Polish / defer gate
-
+### Phase 5 — Polish / defer gate
 Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?
-
 - [ ] CSV import for IBKR
 - [ ] FX rate current + link to BOC chart
 - [ ] Snapshot retention policy
 - [ ] Claude Code daily-routine documentation (how to run common analysis prompts against local SQLite)
 
-## Explicitly deferred / out of scope
-
-- Multi-profile (Family / Parents') — schema hook only
-- Sector concentration
-- Leverage historical sparkline
-- Cost-basis detail drawer, transaction log, tax-lot editing
-- Mobile layout
-- Per-account cash
-- Per-ticker currency toggle
-- HELOC tax-deductibility calculations (permanent)
-- App-level encryption
-
 ## Blocked on user
-
 - [ ] Real Questrade CSV export — required to finalize the import parser's column map
