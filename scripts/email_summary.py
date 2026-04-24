@@ -54,19 +54,26 @@ def generate_email_html(conn) -> str:
     lev = calcs.leverage(conn, port.portfolio_cad, unreg_value)
     nw = calcs.net_worth(conn, port.portfolio_cad)
 
-    # Top holdings
+    # Top holdings (by market value) with daily change
     top_holdings = []
     for h in sorted(holdings_all, key=lambda x: x.mkt_value_cad(fx.rate) or 0, reverse=True)[:10]:
         mv = h.mkt_value_cad(fx.rate)
         if mv is None:
             continue
-        pl = h.unrealized_pl_cad(fx.rate) or 0
-        pct_port = (mv / port.portfolio_cad * 100) if port.portfolio_cad else 0
+        # Daily change
+        if h.price_native and h.prev_close_native and h.prev_close_native > 0:
+            daily_pct = (h.price_native / h.prev_close_native - 1.0) * 100
+            daily_pl = (h.price_native - h.prev_close_native) * h.quantity
+            if h.currency == "USD":
+                daily_pl *= fx.rate
+        else:
+            daily_pct = 0
+            daily_pl = 0
+
         top_holdings.append({
             "ticker": h.ticker,
-            "mkt_value": mv,
-            "pl": pl,
-            "pct_port": pct_port,
+            "daily_pct": daily_pct,
+            "daily_pl": daily_pl,
         })
 
     # Watchlist (all favorites)
@@ -118,14 +125,13 @@ def generate_email_html(conn) -> str:
                 {_allocation_html(allocs['by_account'])}
             </div>
 
-            <h2>Top Holdings</h2>
+            <h2>Top 10 Holdings</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Ticker</th>
-                        <th class="value">Market Value</th>
-                        <th class="value">P/L</th>
-                        <th class="value">% Port</th>
+                        <th class="value">Daily %</th>
+                        <th class="value">Daily Change</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -179,14 +185,13 @@ def _top_holdings_html(holdings: list[dict]) -> str:
     """Generate top holdings table rows."""
     html = ""
     for h in holdings:
-        pl_color = "positive" if h["pl"] >= 0 else "negative"
-        arrow = "▲" if h["pl"] >= 0 else "▼"
+        daily_color = "positive" if h["daily_pl"] >= 0 else "negative"
+        arrow = "▲" if h["daily_pl"] >= 0 else "▼"
         html += f"""
         <tr>
             <td class="ticker">{h['ticker']}</td>
-            <td class="value">{fmt_cad(h['mkt_value'])}</td>
-            <td class="value {pl_color}">{arrow} {fmt_cad(h['pl'])}</td>
-            <td class="value">{h['pct_port']:.1f}%</td>
+            <td class="value">{h['daily_pct']:+.2f}%</td>
+            <td class="value {daily_color}">{arrow} {fmt_cad(h['daily_pl'])}</td>
         </tr>
         """
     return html
