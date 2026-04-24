@@ -1,5 +1,6 @@
 """V2 'Dark Command Strip' palette — applied via Streamlit CSS injection."""
 import streamlit as st
+from typing import Optional
 
 PALETTE = {
     "bg":        "#0f0f0f",
@@ -82,7 +83,7 @@ def account_badge(account_type: str) -> str:
     return f'<span class="badge {cls}">{label}</span>'
 
 
-def yahoo_link(display: str, yahoo_ticker: str | None = None) -> str:
+def yahoo_link(display: str, yahoo_ticker: Optional[str] = None) -> str:
     """Anchor to Yahoo Finance. `display` is shown text; `yahoo_ticker` overrides URL symbol."""
     href = f"https://finance.yahoo.com/quote/{yahoo_ticker or display}"
     return (f'<a href="{href}" target="_blank" rel="noopener noreferrer" '
@@ -100,25 +101,25 @@ def kpi_tile(label: str, value: str, sub: str = "", tone: str = "") -> str:
     )
 
 
-def fmt_cad(x: float | None) -> str:
+def fmt_cad(x: Optional[float]) -> str:
     if x is None:
         return "—"
     return f"${x:,.0f}"
 
 
-def fmt_pct(x: float | None, digits: int = 1) -> str:
+def fmt_pct(x: Optional[float], digits: int = 1) -> str:
     if x is None:
         return "—"
     return f"{x * 100:.{digits}f}%"
 
 
-def fmt_ratio(x: float | None) -> str:
+def fmt_ratio(x: Optional[float]) -> str:
     if x is None or x == 0:
         return "—"
     return f"{x:.2f}×"
 
 
-def fmt_change_pct(price: float | None, prev: float | None) -> str:
+def fmt_change_pct(price: Optional[float], prev: Optional[float]) -> str:
     """Day-change % cell HTML — arrow + green/red, mono."""
     if price is None or not prev:
         return '<span class="mono" style="color:#6b7280;">—</span>'

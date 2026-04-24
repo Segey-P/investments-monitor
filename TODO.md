@@ -1,10 +1,10 @@
 # Investments Monitor — TODO
 
 ## Current state (2026-04-23)
-Phases 1–3 complete. Dashboard tab redesigned per V2 wireframes + user feedback (P/L terminology, Non-Reg label, Yahoo links, live 60s prices, watchlist favorites). Holdings + Watchlist tabs received the shared treatment (Yahoo links, P/L, Non-Reg). Other tabs (Leverage, Net Worth, Settings) pending screen-by-screen review.
+Phases 1–3 complete. Dashboard + Holdings tabs redesigned per user feedback (P/L terminology, Non-Reg label, Yahoo links, live pricing, favorites). Holdings refined: P/L % formula corrected (native currency basis), Curr label, Acct column removed, totals moved to header, default sort by mkt value. Other tabs (Leverage, Net Worth, Watchlist, Settings) pending review.
 
 ## Top tasks (next)
-- [ ] **Holdings tab review** — user feedback pass (next session)
+- [x] **Holdings tab review** — user feedback pass ✅ (2026-04-23)
 - [ ] **Leverage tab review** — user feedback pass
 - [ ] **Net Worth tab review** — user feedback pass
 - [ ] **Watchlist tab review** — user feedback pass (favorites toggle is in place; full UI/UX still TBD)

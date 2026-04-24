@@ -25,11 +25,12 @@ Provide the user-facing views for monitoring, plus management of non-market asse
 ### B. Holdings
 
 - Filter pills by account type (DB value `Unreg` rendered as "Non-Reg").
-- Sortable columns: Ticker · ↗ (Yahoo link) · Acct · Cur · Qty · ACB/sh · Mkt Price · Mkt Value · P/L · P/L % · % Portfolio · Asset Class.
-- Account tag as colored pill.
+- Sortable columns: Ticker · ↗ (Yahoo link) · Curr · Qty · ACB/sh · Price · Mkt Value · P/L · P/L % · Asset Class.
+  - **P/L %** formula: `(price_native / acb_per_share) − 1` (percentage return in native currency).
+  - Rows sorted by market value (descending) by default.
 - USD positions show CAD-converted value as the Mkt Value column (BOC rate). No per-ticker currency toggle.
 - Colorblind-safe P/L: ▲ (gain, green `#22c55e`) / ▼ (loss, red `#ef4444`). Shape + color.
-- Footer summary bar: Total Portfolio · P/L · Position count · Account count.
+- **Header summary bar** (above table): Total Portfolio · P/L · Position count · Account count.
 - **No detail drawer** — ACB is entered once, no transaction history.
 
 ### C. Leverage (HELOC + Margin)
