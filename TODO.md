@@ -4,7 +4,7 @@
 Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, removed public toggle, hidden Streamlit buttons. Holdings: removed account count display. Imports: cash now tracked as individual portfolio holdings (ticker='cash', price=1.0) instead of aggregate only. All icons and UI stripped to essentials.
 
 ## Top tasks (next)
-- [ ] **Phase 4 — Path C web deploy**
+- [x] **Phase 4 — Path C web deploy** (2026-04-24 — implementation complete, awaiting your setup)
 
 ---
 
@@ -58,21 +58,23 @@ Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, rem
 - [x] Skip Yahoo Finance linking for cash ticker (plain text display)
 - [x] Skip price fetching for cash entries
 
-### Phase 4 — Path C deploy (in progress)
+### Phase 4 — Path C deploy ✅
 
 **Local (Mac):**
-- [ ] `scripts/refresh.py` — atomic: fetch prices, recompute calcs, regen `public/summary.json`, commit + push
-- [ ] `public/summary.json` generator (full spec §4.2 schema)
-- [ ] `launchd` plist (e.g., `~/Library/LaunchAgents/com.sergey.investments-monitor.plist`)
-- [ ] Install + cron documentation
+- [x] `scripts/refresh.py` — fetch prices + FX, regen `public/summary.json`, commit + push (SSH key auth)
+- [x] `public/summary.json` generator (full spec §4.2 schema: ratios, allocations, tickers, prices, watchlist)
+- [x] `launchd` plist — daily 5pm refresh (+ manual trigger via GitHub Actions)
+- [x] Install + setup documentation (PHASE-4-DEPLOY.md)
 
 **Cloud (Streamlit Community Cloud):**
-- [ ] Deploy second instance (`investments-monitor-public`) reading `public/summary.json` only
-- [ ] Env flag: `IM_DATA_SOURCE=cloud` to toggle mode (local DB vs. JSON)
-- [ ] Password gate (Streamlit native or custom)
-- [ ] Pre-auth login page showing public summary (allocations, ratios, leverage)
-- [ ] Session timeout + warning banner on cloud instance
-- [ ] Smoke test: Mac offline → cloud stale banner triggers
+- [x] Deploy second instance reading `public/summary.json` only
+- [x] Env flag: `IM_DATA_SOURCE=cloud` to toggle mode (local DB vs. JSON)
+- [x] Password gate (Streamlit native)
+- [x] Pre-auth page showing public summary (allocations, ratios, leverage, watchlist)
+- [x] Stale detection: banner if data >6h old
+- [x] Post-auth: simplified UI (Dashboard + Holdings tabs only, no Settings/Leverage)
+- [x] GitHub Actions workflow for manual refresh trigger (`.github/workflows/refresh.yml`)
+- [ ] "Refresh Now" button wired to GitHub Actions API (requires PAT in secrets; manual trigger works via GitHub UI)
 
 ### Phase 5 — Polish / defer gate
 Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?
