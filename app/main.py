@@ -69,6 +69,8 @@ def _render_cloud_mode() -> None:
 
 def _render_cloud_login() -> None:
     """Pre-auth page: show summary + watchlist."""
+    import plotly.graph_objects as go
+
     summary = cloud_mode.load_summary(_REPO_ROOT)
 
     if summary is None:
@@ -83,76 +85,131 @@ def _render_cloud_login() -> None:
             unsafe_allow_html=True,
         )
 
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.markdown("### Public Summary")
-        if summary.ratios:
-            st.markdown("**Leverage & Returns**")
-            metric_cols = st.columns(4)
-            with metric_cols[0]:
-                st.metric("Leverage", f"{summary.ratios.get('leverage_ratio', 0):.2f}×")
-            with metric_cols[1]:
-                st.metric("HELOC Util.", f"{summary.ratios.get('heloc_utilization_pct', 0)*100:.1f}%")
-            with metric_cols[2]:
-                st.metric("D/E Ratio", f"{summary.ratios.get('debt_to_equity', 0):.2f}")
-            with metric_cols[3]:
-                st.metric("YTD Return", f"{summary.ratios.get('portfolio_return_ytd_pct', 0):.2f}%")
+    st.markdown("## Portfolio Summary")
 
-        # Allocations
-        if summary.allocations.get("by_asset_class"):
-            st.markdown("**Allocation by Asset Class**")
-            st.json(summary.allocations["by_asset_class"])
-
-        if summary.allocations.get("by_account"):
-            st.markdown("**Allocation by Account**")
-            st.json(summary.allocations["by_account"])
-
-    with col2:
-        st.markdown("### Watchlist")
-        if summary.watchlist:
-            for item in summary.watchlist[:5]:
-                ticker = item["ticker"]
-                gap_pct = item["gap_pct"] * 100
-                arrow = "▲" if gap_pct >= 0 else "▼"
-                st.caption(f"**{ticker}** {arrow} {abs(gap_pct):.1f}%")
-                st.caption(f"Current: ${item['current']:.2f}")
-                st.caption(f"Target: ${item['target']:.2f}")
-                st.divider()
-        else:
-            st.caption("No favorites pinned.")
+    # KPI Metrics
+    if summary.ratios:
+        metric_cols = st.columns(4)
+        with metric_cols[0]:
+            st.metric("Leverage", f"{summary.ratios.get('leverage_ratio', 0):.2f}×")
+        with metric_cols[1]:
+            st.metric("HELOC Util.", f"{summary.ratios.get('heloc_utilization_pct', 0)*100:.1f}%")
+        with metric_cols[2]:
+            st.metric("D/E Ratio", f"{summary.ratios.get('debt_to_equity', 0):.2f}")
+        with metric_cols[3]:
+            st.metric("YTD Return", f"{summary.ratios.get('portfolio_return_ytd_pct', 0):.2f}%")
 
     st.divider()
-    st.markdown(f"**As of:** {summary.as_of}")
 
-    # Login
-    col1, col2 = st.columns(2)
-    with col1:
-        pwd = st.text_input("Password", type="password", key="cloud_pwd")
-    with col2:
-        if st.button("Sign in"):
-            if auth.verify_password(pwd):
-                st.session_state["cloud_auth"] = True
-                st.rerun()
-            else:
-                st.error("Invalid password")
+    # Allocations (2 columns with pie charts)
+    alloc_cols = st.columns(2)
+
+    with alloc_cols[0]:
+        st.markdown("### Asset Class")
+        by_class = summary.allocations.get("by_asset_class", {})
+        if by_class:
+            fig = go.Figure(data=[go.Pie(
+                labels=list(by_class.keys()),
+                values=[v*100 for v in by_class.values()],
+                marker=dict(line=dict(color="#0f0f0f", width=2)),
+            )])
+            fig.update_layout(
+                height=280, margin=dict(l=0, r=0, t=0, b=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#f0f0f0", size=11),
+            )
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    with alloc_cols[1]:
+        st.markdown("### Account Type")
+        by_acct = summary.allocations.get("by_account", {})
+        if by_acct:
+            fig = go.Figure(data=[go.Pie(
+                labels=list(by_acct.keys()),
+                values=[v*100 for v in by_acct.values()],
+                marker=dict(line=dict(color="#0f0f0f", width=2)),
+            )])
+            fig.update_layout(
+                height=280, margin=dict(l=0, r=0, t=0, b=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#f0f0f0", size=11),
+            )
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    st.divider()
+
+    # Watchlist
+    st.markdown("### Watchlist Favorites")
+    if summary.watchlist:
+        for item in summary.watchlist[:6]:
+            ticker = item["ticker"]
+            current = item["current"]
+            target = item["target"]
+            gap_pct = item["gap_pct"] * 100
+            arrow = "▲" if gap_pct >= 0 else "▼"
+            gap_color = "#22c55e" if gap_pct >= 0 else "#ef4444"
+
+            col1, col2, col3, col4 = st.columns([1, 1.5, 1.5, 1])
+            with col1:
+                st.markdown(f"**{ticker}**")
+            with col2:
+                st.markdown(f"Current: `${current:.2f}`")
+            with col3:
+                st.markdown(f"Target: `${target:.2f}`")
+            with col4:
+                st.markdown(f'<span style="color:{gap_color};">{arrow} {abs(gap_pct):.1f}%</span>',
+                           unsafe_allow_html=True)
+    else:
+        st.caption("No favorites pinned.")
+
+    st.divider()
+
+    # Metadata
+    from datetime import datetime
+    as_of_dt = datetime.fromisoformat(summary.as_of.replace("Z", "+00:00"))
+    st.caption(f"Data as of: {as_of_dt.strftime('%Y-%m-%d %H:%M PT')}")
+
+    st.divider()
+
+    # Login section
+    st.markdown("### Sign In")
+    pwd = st.text_input("Password", type="password", key="cloud_pwd")
+    if st.button("Sign In", use_container_width=True):
+        if auth.verify_password(pwd):
+            st.session_state["cloud_auth"] = True
+            st.rerun()
+        else:
+            st.error("Invalid password")
 
 
 def _render_cloud_dashboard() -> None:
     """Post-auth cloud view: simplified (Dashboard + Holdings only)."""
     summary = cloud_mode.load_summary(_REPO_ROOT)
 
+    # Header with sign out
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("Sign out", use_container_width=True):
+            st.session_state["cloud_auth"] = False
+            st.rerun()
+
     if summary and summary.is_stale:
         st.markdown(
             '<div class="stale-banner">⚠ Data is stale (>6h old). '
-            'Refresh now?</div>',
+            'Try refreshing via GitHub Actions.</div>',
             unsafe_allow_html=True,
         )
 
-    if st.button("🔄 Refresh Now"):
-        st.info("Refresh triggered. Cloud will update within 1 minute.")
-        st.stop()
+    # Refresh button (GitHub Actions)
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        if st.button("🔄 Refresh Now", use_container_width=True):
+            st.info("Visit: https://github.com/Segey-P/investments-monitor/actions\n\n"
+                   "Click 'Refresh Portfolio Summary' → 'Run workflow' to manually refresh.")
+    with col2:
+        st.caption(f"Last update: {summary.as_of if summary else '—'}")
 
-    st.button("Sign out", on_click=lambda: st.session_state.update({"cloud_auth": False}))
+    st.divider()
 
     # Simplified tabs (no Settings or Leverage)
     tabs = st.tabs(["Dashboard", "Holdings"])
