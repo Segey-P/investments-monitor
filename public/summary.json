@@ -1,0 +1,19 @@
+{
+  "as_of": "2026-04-24T17:00:00+00:00",
+  "ratios": {
+    "leverage_ratio": 0.0,
+    "heloc_utilization_pct": 0.0,
+    "portfolio_return_ytd_pct": 0.0,
+    "debt_to_equity": 0.0,
+    "mortgage_ltv": 0.0
+  },
+  "allocations": {
+    "by_account": {},
+    "by_asset_class": {},
+    "by_country": {},
+    "by_currency": {}
+  },
+  "tickers_held": [],
+  "prices": {},
+  "watchlist": []
+}
