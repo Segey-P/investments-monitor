@@ -20,3 +20,18 @@ KNOWN_ETF_TICKERS = {
     "COPP", "COPX", "PICK", "PPLT", "QTUM", "SIXG", "FXI", "CQQQ",
     "IBIT", "FBTC", "BITQ", "GNOM",
 }
+
+CASH_TICKERS = {
+    "UCSH.U", "UCSH", "PSA", "CASH", "PCSA", "TST", "CHP.U", "CHP",
+    "PSA.U", "XSB", "VSB",
+}
+
+DIVIDEND_TICKERS = {
+    "CU", "CDZ", "FDV", "XDV", "VDY", "DVY", "XID", "VID",
+    "RY", "TD", "BNS", "NA", "BMO", "CNQ", "ENB", "TRP", "T", "BCE",
+    "FTS", "CAR", "AQN", "REI.UN", "HR.UN", "AP.UN", "NWH.UN",
+}
+
+GROWTH_TICKERS = {
+    "TQQQ", "QQQ", "XIT", "SHOP", "UPRO", "SPXL", "CQQQ",
+}

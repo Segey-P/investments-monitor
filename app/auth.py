@@ -31,30 +31,140 @@ def _get_timeout_min(conn) -> int:
 
 
 def _pre_auth_summary(conn) -> None:
-    """Show leakage-safe summary on the login screen (proportions only)."""
+    """Show leakage-safe summary on the login screen: top holdings, watchlist favorites, allocations."""
     from app import calcs
     from app.fx import get_usdcad
-    from app.theme import fmt_pct, fmt_ratio
+    from app.theme import (
+        PALETTE, account_badge, fmt_cad, fmt_change_pct, yahoo_link,
+    )
 
     fx = get_usdcad(conn)
     hs = calcs.load_holdings(conn)
     port = calcs.summarize(hs, fx.rate)
     if port.portfolio_cad == 0:
         return
-    unreg = calcs.summarize([h for h in hs if h.account_type == "Unreg"], fx.rate).portfolio_cad
-    lev = calcs.leverage(conn, port.portfolio_cad, unreg)
-    alloc = calcs.allocations(hs, fx.rate)
 
-    st.caption("Public summary (no dollar totals) — visible pre-auth")
-    cols = st.columns(4)
-    cols[0].metric("Leverage Ratio", fmt_ratio(lev.leverage_ratio))
-    cols[1].metric("HELOC Util", fmt_pct(lev.heloc_util_pct))
-    cols[2].metric("Positions", f"{port.position_count}")
-    cols[3].metric("Accounts", f"{port.account_count}")
+    st.caption("Public summary — visible pre-auth")
 
-    with st.expander("Allocation by account"):
-        for k, v in sorted(alloc["by_account"].items(), key=lambda kv: -kv[1]):
-            st.write(f"- **{k}** — {v * 100:.1f}%")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### Top Holdings")
+        ranked = []
+        for h in hs:
+            mv = h.mkt_value_cad(fx.rate)
+            if mv is None:
+                continue
+            ranked.append((h, mv))
+        ranked.sort(key=lambda x: -x[1])
+        top = ranked[:10]
+
+        if top:
+            head_cells = []
+            for label, align in [
+                ("Ticker", "left"), ("Acct", "left"), ("Mkt Value", "right"),
+                ("Today", "right"), ("P/L", "right"),
+            ]:
+                head_cells.append(
+                    f'<th style="text-align:{align};padding:6px 8px;font-size:9px;'
+                    f'color:{PALETTE["textDim"]};letter-spacing:0.06em;font-weight:600;'
+                    f'border-bottom:1px solid {PALETTE["border"]};text-transform:uppercase;">{label}</th>'
+                )
+
+            body_rows = []
+            for i, (h, mv) in enumerate(top):
+                pl = h.unrealized_pl_cad(fx.rate) or 0.0
+                pl_color = PALETTE["green"] if pl >= 0 else PALETTE["red"]
+                usd_badge = (
+                    f' <span style="font-size:8px;color:{PALETTE["amber"]};'
+                    f'border:1px solid {PALETTE["amber"]};border-radius:2px;'
+                    f'padding:0 3px;margin-left:3px;">USD</span>'
+                    if h.currency == "USD" else ""
+                )
+                bg = PALETTE["bgRaised"] if i % 2 else "transparent"
+                body_rows.append(
+                    f'<tr style="background:{bg};">'
+                    f'<td style="padding:6px 8px;font-size:11px;font-weight:700;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">'
+                    f'{yahoo_link(h.ticker, h.yahoo_ticker)}{usd_badge}</td>'
+                    f'<td style="padding:6px 8px;border-bottom:1px solid {PALETTE["border"]};">'
+                    f'{account_badge(h.account_type)}</td>'
+                    f'<td class="mono" style="padding:6px 8px;text-align:right;font-size:11px;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">{fmt_cad(mv)}</td>'
+                    f'<td style="padding:6px 8px;text-align:right;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">'
+                    f'{fmt_change_pct(h.price_native, h.prev_close_native)}</td>'
+                    f'<td class="mono" style="padding:6px 8px;text-align:right;font-size:11px;'
+                    f'color:{pl_color};border-bottom:1px solid {PALETTE["border"]};">{fmt_cad(pl)}</td>'
+                    f'</tr>'
+                )
+
+            st.markdown(
+                '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+                f'<thead><tr style="background:{PALETTE["bgRaised"]};">'
+                f'{"".join(head_cells)}</tr></thead>'
+                f'<tbody>{"".join(body_rows)}</tbody></table>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("No priced positions yet.")
+
+    with col2:
+        st.markdown("#### Watchlist Favorites")
+        rows = conn.execute("""
+            SELECT w.ticker, w.target_price,
+                   p.price AS price, p.prev_close AS prev
+            FROM watchlist w
+            LEFT JOIN prices p ON p.ticker = w.ticker
+            WHERE w.is_favorite = 1
+            ORDER BY w.ticker
+            LIMIT 5
+        """).fetchall()
+        if not rows:
+            st.caption("No favorites pinned yet.")
+        else:
+            parts = []
+            for r in rows:
+                ticker = r["ticker"]
+                price = r["price"]
+                prev = r["prev"]
+                target = r["target_price"]
+                chg_html = fmt_change_pct(price, prev)
+                price_html = f'${price:.2f}' if price is not None else '—'
+                if price is not None and target:
+                    gap_pct = (price - target) / target * 100
+                    arrow = "▲" if gap_pct >= 0 else "▼"
+                    color = PALETTE["green"] if gap_pct >= 0 else PALETTE["amber"]
+                    target_html = (
+                        f'Target <span class="mono">${target:.2f}</span> · '
+                        f'<span style="color:{color};">{arrow} {abs(gap_pct):.1f}% '
+                        f'{"above" if gap_pct >= 0 else "away"}</span>'
+                    )
+                else:
+                    target_html = '<span style="color:#6b7280;">No target set</span>'
+                parts.append(
+                    f'<div style="padding:8px 0;border-bottom:1px solid {PALETTE["border"]};">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
+                    f'<span style="font-weight:700;font-size:12px;">{yahoo_link(ticker)}</span>'
+                    f'<span style="display:flex;gap:10px;align-items:baseline;font-size:11px;">'
+                    f'{chg_html}<span class="mono">{price_html}</span></span></div>'
+                    f'<div style="font-size:10px;color:{PALETTE["textDim"]};margin-top:2px;">{target_html}</div>'
+                    f'</div>'
+                )
+            st.markdown("".join(parts), unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("#### Allocation by Category")
+        alloc = calcs.allocations(hs, fx.rate)["by_category"]
+        if alloc:
+            import pandas as pd
+            df = pd.DataFrame(
+                sorted(alloc.items(), key=lambda kv: -kv[1]),
+                columns=["Category", "Share"],
+            )
+            st.bar_chart(df.set_index("Category")["Share"], height=200)
+        else:
+            st.caption("No allocations yet.")
 
 
 def tick(conn) -> bool:

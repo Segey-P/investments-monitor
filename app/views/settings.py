@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import subprocess
+import tempfile
 from datetime import date, datetime
 from pathlib import Path
 
 import bcrypt
 import streamlit as st
 
+from app.db import init_db
 from app.fx import get_usdcad
+from scripts.importers.questrade import QuestradeImporter
+from scripts.importers.persist import FileAlreadyImported, persist_result
 
 
 def _get_setting(conn, key: str, default: str = "") -> str:
@@ -41,6 +45,184 @@ def _git_info(repo_root: Path) -> dict[str, str]:
         return {"branch": branch, "commit": short, "subject": subject}
     except Exception:
         return {"branch": "—", "commit": "—", "subject": "—"}
+
+
+def _render_import_flow(conn) -> None:
+    """3-stage import flow: upload → preview/review → done."""
+    ss = st.session_state
+    ss.setdefault("import_flow", {"stage": 0, "path": None, "result": None, "overrides": {}})
+    flow = ss["import_flow"]
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    import_dir = repo_root / "data" / "imports"
+    import_dir.mkdir(parents=True, exist_ok=True)
+
+    # Stage 0: Upload
+    if flow["stage"] == 0:
+        st.markdown("#### Upload Questrade Investment Summary")
+        uploaded = st.file_uploader("Drop .xlsx file or click to browse", type=["xlsx"])
+
+        if uploaded:
+            file_path = import_dir / uploaded.name
+            file_path.write_bytes(uploaded.getvalue())
+            st.success(f"✓ Saved {uploaded.name}")
+
+            importer = QuestradeImporter()
+            if importer.detect_format(file_path):
+                try:
+                    parsed = importer.parse(file_path)
+                    flow["path"] = file_path
+                    flow["result"] = parsed
+                    flow["overrides"] = {}
+                    flow["stage"] = 1
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to parse file: {e}")
+            else:
+                st.warning("File doesn't look like Questrade; continuing anyway...")
+                parsed = importer.parse(file_path)
+                flow["path"] = file_path
+                flow["result"] = parsed
+                flow["overrides"] = {}
+                flow["stage"] = 1
+                st.rerun()
+
+        st.markdown("---")
+        st.markdown("#### Import History")
+        import_records = conn.execute("""
+            SELECT filename, rows, imported_at FROM imports
+            ORDER BY imported_at DESC
+        """).fetchall()
+
+        if import_records:
+            for r in import_records:
+                st.caption(f"**{r['filename']}** — {r['rows']} holdings on {r['imported_at']}")
+        else:
+            st.caption("No imports yet.")
+
+    # Stage 1: Preview & Ticker Review
+    elif flow["stage"] == 1:
+        parsed = flow["result"]
+        path = flow["path"]
+
+        st.markdown(f"#### Preview: {path.name}")
+
+        # Accounts summary
+        st.markdown("**Accounts**")
+        acct_data = []
+        for num, acct in parsed.accounts.items():
+            acct_data.append({
+                "Account": num,
+                "Type": acct.account_type,
+                "Cash (CAD)": f"${acct.cash_cad:,.2f}",
+            })
+        if acct_data:
+            st.dataframe(acct_data, use_container_width=True, hide_index=True)
+
+        st.markdown(f"**Holdings:** {len(parsed.holdings)} positions")
+
+        # Ticker mismatches only
+        mismatches = [
+            h for h in parsed.holdings
+            if h.yahoo_ticker != h.ticker
+        ]
+
+        if mismatches:
+            st.markdown("**Ticker Mappings (mismatches only)**")
+            st.caption(
+                "Review auto-mapped Yahoo symbols. Edit the 'Override' column if needed."
+            )
+
+            editor_data = []
+            for h in mismatches:
+                editor_data.append({
+                    "Questrade": h.ticker,
+                    "Description": h.description[:50] if h.description else "—",
+                    "Auto-mapped": h.yahoo_ticker,
+                    "Override": flow["overrides"].get(h.ticker, ""),
+                    "Currency": h.currency,
+                })
+
+            edited = st.data_editor(
+                editor_data,
+                use_container_width=True,
+                hide_index=True,
+                key="import_ticker_overrides",
+            )
+
+            # Store any overrides
+            for row in edited:
+                ticker = row["Questrade"]
+                override = row["Override"]
+                if override:
+                    flow["overrides"][ticker] = override
+                elif ticker in flow["overrides"]:
+                    del flow["overrides"][ticker]
+        else:
+            st.info("All ticker mappings look good (no mismatches).")
+
+        col1, col2 = st.columns(2)
+        if col1.button("← Back", key="import_back"):
+            flow["stage"] = 0
+            flow["path"] = None
+            flow["result"] = None
+            flow["overrides"] = {}
+            st.rerun()
+
+        if col2.button("Confirm Import →", key="import_confirm"):
+            flow["stage"] = 2
+            st.rerun()
+
+    # Stage 2: Done
+    elif flow["stage"] == 2:
+        parsed = flow["result"]
+        path = flow["path"]
+
+        st.markdown(f"#### Importing {path.name}...")
+
+        # Apply any user overrides to the ParseResult holdings
+        for h in parsed.holdings:
+            if h.ticker in flow["overrides"]:
+                h.yahoo_ticker = flow["overrides"][h.ticker]
+
+        try:
+            result = persist_result(conn, path, parsed)
+            st.success(
+                f"✓ Imported {result['holdings']} holdings into {result['accounts']} account(s). "
+                f"Cash total: ${result['cash_total']:,.2f} CAD"
+            )
+
+            if st.button("Import another file", key="import_again"):
+                flow["stage"] = 0
+                flow["path"] = None
+                flow["result"] = None
+                flow["overrides"] = {}
+                st.rerun()
+
+        except FileAlreadyImported as e:
+            st.warning(f"File already imported on {e.imported_at}")
+            if st.button("Re-import (replace)", key="import_reimport"):
+                try:
+                    conn.execute("DELETE FROM imports WHERE filename = ?", (path.name,))
+                    conn.commit()
+                    result = persist_result(conn, path, parsed)
+                    st.success(
+                        f"✓ Re-imported {result['holdings']} holdings into {result['accounts']} account(s)."
+                    )
+                    if st.button("Import another file", key="import_again_2"):
+                        flow["stage"] = 0
+                        flow["path"] = None
+                        flow["result"] = None
+                        flow["overrides"] = {}
+                        st.rerun()
+                except Exception as e2:
+                    st.error(f"Re-import failed: {e2}")
+
+        except Exception as e:
+            st.error(f"Import failed: {e}")
+            if st.button("Try again", key="import_retry"):
+                flow["stage"] = 1
+                st.rerun()
 
 
 def render(conn) -> None:
@@ -97,21 +279,7 @@ def render(conn) -> None:
 
     # -------------------- Imports --------------------
     with st.expander("Imports", expanded=False):
-        import_dir = Path(__file__).resolve().parent.parent.parent / "data" / "imports"
-        import_files = sorted([f.name for f in import_dir.glob("*.xlsx") if f.is_file()])
-
-        if not import_files:
-            st.caption("No files in `data/imports/` yet.")
-        else:
-            st.markdown("**Available imports:**")
-            existing = {row["filename"] for row in conn.execute("SELECT DISTINCT filename FROM imports").fetchall()}
-            for fname in import_files:
-                status = "✓ Imported" if fname in existing else "○ New"
-                st.markdown(f"- `{fname}` — {status}")
-
-            st.markdown("**To import:**")
-            st.code("python -m scripts.import_questrade <file.xlsx>", language="bash")
-            st.caption("Duplicate files will be skipped automatically.")
+        _render_import_flow(conn)
 
     # -------------------- About --------------------
     with st.expander("About", expanded=False):

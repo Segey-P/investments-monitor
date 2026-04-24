@@ -50,6 +50,7 @@ def render(conn) -> None:
             "P/L":        fmt_cad(pl) if pl is not None else "—",
             "P/L %":      fmt_pct(pl_pct) if pl_pct is not None else "—",
             "Class":      h.asset_class,
+            "Category":   h.category,
         })
 
     cols = st.columns(4)
@@ -66,7 +67,7 @@ def render(conn) -> None:
         hide_index=True,
         width="stretch",
         column_order=["Ticker", "Yahoo", "Curr", "Qty", "ACB/sh", "Price", "Day %",
-                      "Mkt Value", "P/L", "P/L %", "Class"],
+                      "Mkt Value", "P/L", "P/L %", "Class", "Category"],
         column_config={
             "Yahoo":       st.column_config.LinkColumn(
                 "↗", help="Open on Yahoo Finance",
@@ -79,6 +80,7 @@ def render(conn) -> None:
             "Mkt Value":   st.column_config.TextColumn(),
             "P/L":         st.column_config.TextColumn(),
             "P/L %":       st.column_config.TextColumn(),
+            "Category":    st.column_config.TextColumn(width="small"),
         },
     )
 

@@ -102,10 +102,11 @@ def _allocation_widget(holdings, usdcad: float) -> None:
     st.markdown("#### Allocation")
     dim = st.radio(
         "Allocation dimension",
-        ["Asset class", "Country", "Currency"],
+        ["Category", "Asset class", "Country", "Currency"],
         horizontal=True, label_visibility="collapsed", key="alloc_dim",
     )
-    dim_key = {"Asset class": "by_asset_class",
+    dim_key = {"Category": "by_category",
+               "Asset class": "by_asset_class",
                "Country": "by_country",
                "Currency": "by_currency"}[dim]
     alloc = calcs.allocations(holdings, usdcad)[dim_key]

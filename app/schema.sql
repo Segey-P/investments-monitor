@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS holdings (
   acb_per_share REAL NOT NULL,
   asset_class TEXT NOT NULL CHECK (asset_class IN ('Cash','Stock','ETF','LeveragedETF','Crypto')),
   country TEXT NOT NULL CHECK (country IN ('CA','US','Other')),
+  category TEXT NOT NULL DEFAULT 'Other' CHECK (category IN ('Cash','Dividend','Growth','Other')),
   description TEXT,
   as_of TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (account_id, ticker, currency)

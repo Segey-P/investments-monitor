@@ -16,6 +16,7 @@ class HoldingRow:
     quantity: float
     acb_per_share: float
     asset_class: str
+    category: str
     country: str
     description: str
     price_native: float | None
@@ -54,7 +55,7 @@ def load_holdings(conn) -> list[HoldingRow]:
     rows = conn.execute("""
         SELECT h.id, h.account_id, a.account_type, a.label AS account_label,
                h.ticker, h.yahoo_ticker, h.currency, h.quantity, h.acb_per_share,
-               h.asset_class, h.country, h.description,
+               h.asset_class, h.category, h.country, h.description,
                p.price      AS price_native,
                p.prev_close AS prev_close_native,
                COALESCE(p.stale, 1) AS price_stale
@@ -68,7 +69,8 @@ def load_holdings(conn) -> list[HoldingRow]:
             account_label=r["account_label"], ticker=r["ticker"],
             yahoo_ticker=r["yahoo_ticker"], currency=r["currency"],
             quantity=r["quantity"], acb_per_share=r["acb_per_share"],
-            asset_class=r["asset_class"], country=r["country"],
+            asset_class=r["asset_class"], category=r["category"],
+            country=r["country"],
             description=r["description"] or "",
             price_native=r["price_native"],
             prev_close_native=r["prev_close_native"],
@@ -113,6 +115,7 @@ def allocations(holdings: list[HoldingRow], usdcad: float) -> dict[str, dict[str
     dims = {
         "by_account":     {},
         "by_asset_class": {},
+        "by_category":    {},
         "by_country":     {},
         "by_currency":    {},
     }
@@ -124,6 +127,7 @@ def allocations(holdings: list[HoldingRow], usdcad: float) -> dict[str, dict[str
         total += mv
         dims["by_account"][h.account_type]      = dims["by_account"].get(h.account_type, 0) + mv
         dims["by_asset_class"][h.asset_class]   = dims["by_asset_class"].get(h.asset_class, 0) + mv
+        dims["by_category"][h.category]         = dims["by_category"].get(h.category, 0) + mv
         dims["by_country"][h.country]           = dims["by_country"].get(h.country, 0) + mv
         dims["by_currency"][h.currency]         = dims["by_currency"].get(h.currency, 0) + mv
     if total <= 0:

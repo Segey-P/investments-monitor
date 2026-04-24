@@ -2,7 +2,7 @@ from pathlib import Path
 import openpyxl
 
 from .base import BrokerImporter, ParsedAccount, ParsedHolding, ParseResult
-from .etf_tickers import LEVERAGED_ETF_TICKERS, KNOWN_ETF_TICKERS
+from .etf_tickers import LEVERAGED_ETF_TICKERS, KNOWN_ETF_TICKERS, CASH_TICKERS, DIVIDEND_TICKERS, GROWTH_TICKERS
 
 # Questrade account-type label → our schema enum
 ACCOUNT_TYPE_MAP = {
@@ -39,6 +39,17 @@ def _default_country(ticker: str, currency: str, description: str) -> str:
         return "CA"
     if currency == "USD":
         return "US"
+    return "Other"
+
+
+def _categorize_holding(ticker: str, asset_class: str) -> str:
+    t = ticker.upper()
+    if t in CASH_TICKERS or asset_class == "Cash":
+        return "Cash"
+    if t in DIVIDEND_TICKERS:
+        return "Dividend"
+    if t in GROWTH_TICKERS:
+        return "Growth"
     return "Other"
 
 
@@ -123,6 +134,7 @@ class QuestradeImporter(BrokerImporter):
             ac = _refine_asset_class(str(sym), asset_code, desc)
             country = _default_country(str(sym), cur, desc)
             yahoo = _to_yahoo_ticker(str(sym), cur, desc)
+            category = _categorize_holding(str(sym), ac)
             result.holdings.append(ParsedHolding(
                 broker_account_number=acct,
                 ticker=str(sym),
@@ -132,6 +144,7 @@ class QuestradeImporter(BrokerImporter):
                 acb_per_share=cps,
                 asset_class=ac,
                 country=country,
+                category=category,
                 description=str(desc),
             ))
 

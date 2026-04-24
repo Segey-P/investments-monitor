@@ -22,6 +22,7 @@ class ParsedHolding:
     acb_per_share: float
     asset_class: str
     country: str
+    category: str
     description: str = ""
 
 
