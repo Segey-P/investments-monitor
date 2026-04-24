@@ -40,11 +40,14 @@ def _fetch_batch(tickers: list[str]) -> dict[str, PriceQuote]:
 
 
 def get_quotes(tickers: Iterable[str]) -> dict[str, PriceQuote]:
-    """Return quotes for all tickers. Uses 15-min cache; never raises."""
+    """Return quotes for all tickers. Uses 15-min cache; never raises.
+    Skips 'cash' ticker (no Yahoo quote available)."""
     now = time.time()
     need: list[str] = []
     out: dict[str, PriceQuote] = {}
     for t in tickers:
+        if t == "cash":
+            continue
         cached = _cache.get(t)
         if cached and (now - cached[0] < CACHE_TTL_SECONDS):
             out[t] = cached[1]

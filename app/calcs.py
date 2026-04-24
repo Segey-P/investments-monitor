@@ -72,9 +72,9 @@ def load_holdings(conn) -> list[HoldingRow]:
             asset_class=r["asset_class"], category=r["category"],
             country=r["country"],
             description=r["description"] or "",
-            price_native=r["price_native"],
-            prev_close_native=r["prev_close_native"],
-            price_stale=bool(r["price_stale"]),
+            price_native=1.0 if r["ticker"] == "cash" else r["price_native"],
+            prev_close_native=1.0 if r["ticker"] == "cash" else r["prev_close_native"],
+            price_stale=False if r["ticker"] == "cash" else bool(r["price_stale"]),
         )
         for r in rows
     ]

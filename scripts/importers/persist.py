@@ -80,6 +80,24 @@ def persist_result(conn, path: Path, result: ParseResult) -> dict:
             _upsert_holding(acct_ids[h.broker_account_number], h)
             holdings_count += 1
 
+        from .base import ParsedHolding
+        for num, acct in result.accounts.items():
+            if acct.cash_cad > 0:
+                cash_holding = ParsedHolding(
+                    broker_account_number=num,
+                    ticker="cash",
+                    yahoo_ticker="cash",
+                    currency="CAD",
+                    quantity=acct.cash_cad,
+                    acb_per_share=1.0,
+                    asset_class="Cash",
+                    country="CA",
+                    category="Cash",
+                    description="Cash balance",
+                )
+                _upsert_holding(acct_ids[num], cash_holding)
+                holdings_count += 1
+
         total_cash = sum(a.cash_cad for a in result.accounts.values())
         conn.execute(
             "UPDATE cash_aggregate SET balance_cad = ? WHERE id = 1",

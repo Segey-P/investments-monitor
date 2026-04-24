@@ -53,11 +53,10 @@ def render(conn) -> None:
             "_id":        h.id,
         })
 
-    cols = st.columns(4)
+    cols = st.columns(3)
     cols[0].markdown(f"**Total:** {fmt_cad(port.portfolio_cad)}")
     cols[1].markdown(f"**P/L:** {fmt_cad(port.unrealized_pl_cad)}")
     cols[2].markdown(f"**Positions:** {port.position_count}")
-    cols[3].markdown(f"**Accounts:** {port.account_count}")
 
     st.divider()
 

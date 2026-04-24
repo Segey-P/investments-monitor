@@ -84,7 +84,10 @@ def account_badge(account_type: str) -> str:
 
 
 def yahoo_link(display: str, yahoo_ticker: Optional[str] = None) -> str:
-    """Anchor to Yahoo Finance. `display` is shown text; `yahoo_ticker` overrides URL symbol."""
+    """Anchor to Yahoo Finance. `display` is shown text; `yahoo_ticker` overrides URL symbol.
+    Returns plain text for cash ticker."""
+    if display == "cash" or yahoo_ticker == "cash":
+        return f'<span class="mono">{display}</span>'
     href = f"https://finance.yahoo.com/quote/{yahoo_ticker or display}"
     return (f'<a href="{href}" target="_blank" rel="noopener noreferrer" '
             f'class="ticker-link mono">{display}</a>')

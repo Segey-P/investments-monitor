@@ -22,10 +22,7 @@ def _scope_filter(holdings, scope_db: str):
 
 def _auto_refresh(conn, holdings) -> None:
     """Hit yfinance on every page render; 60s in-process cache absorbs duplicates."""
-    fav_tickers = [r["ticker"] for r in conn.execute(
-        "SELECT ticker FROM watchlist WHERE is_favorite = 1 ORDER BY ticker LIMIT 5"
-    ).fetchall()]
-    tickers = sorted({h.yahoo_ticker for h in holdings} | set(fav_tickers))
+    tickers = sorted({h.yahoo_ticker for h in holdings})
     if not tickers:
         return
     try:
@@ -90,13 +87,8 @@ def render(conn) -> None:
 
     left, right = st.columns(2)
 
-    public_view = st.session_state.get("public_view", False)
-
     with left:
         _allocation_widget(holdings, fx.rate)
-        if public_view:
-            st.markdown("&nbsp;", unsafe_allow_html=True)
-            _watchlist_mini(conn)
 
     with right:
         _top_holdings_table(holdings, port.portfolio_cad, fx.rate)
@@ -128,53 +120,6 @@ def _allocation_widget(holdings, usdcad: float) -> None:
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-
-def _watchlist_mini(conn) -> None:
-    st.markdown("#### Watchlist favorites")
-    rows = conn.execute("""
-        SELECT w.ticker, w.target_price,
-               p.price AS price, p.prev_close AS prev
-        FROM watchlist w
-        LEFT JOIN prices p ON p.ticker = w.ticker
-        WHERE w.is_favorite = 1
-        ORDER BY w.ticker
-        LIMIT 5
-    """).fetchall()
-    if not rows:
-        st.caption(
-            "No favorites pinned. Mark watchlist items as favorite ⭐ in the "
-            "Watchlist tab and the top 5 will surface here."
-        )
-        return
-    parts = []
-    for r in rows:
-        ticker = r["ticker"]
-        price = r["price"]
-        prev = r["prev"]
-        target = r["target_price"]
-        chg_html = fmt_change_pct(price, prev)
-        price_html = f'${price:.2f}' if price is not None else '—'
-        if price is not None and target:
-            gap_pct = (price - target) / target * 100
-            arrow = "▲" if gap_pct >= 0 else "▼"
-            color = PALETTE["green"] if gap_pct >= 0 else PALETTE["amber"]
-            target_html = (
-                f'Target <span class="mono">${target:.2f}</span> · '
-                f'<span style="color:{color};">{arrow} {abs(gap_pct):.1f}% '
-                f'{"above" if gap_pct >= 0 else "away"}</span>'
-            )
-        else:
-            target_html = '<span style="color:#6b7280;">No target set</span>'
-        parts.append(
-            f'<div style="padding:8px 0;border-bottom:1px solid {PALETTE["border"]};">'
-            f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
-            f'<span style="font-weight:700;">{yahoo_link(ticker)}</span>'
-            f'<span style="display:flex;gap:12px;align-items:baseline;">'
-            f'{chg_html}<span class="mono">{price_html}</span></span></div>'
-            f'<div style="font-size:11px;color:{PALETTE["textDim"]};margin-top:2px;">{target_html}</div>'
-            f'</div>'
-        )
-    st.markdown("".join(parts), unsafe_allow_html=True)
 
 
 def _top_holdings_table(holdings, portfolio_cad: float, usdcad: float) -> None:
