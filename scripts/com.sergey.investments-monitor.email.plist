@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sergey.investments-monitor.email</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/sergeypochikovskiy/AI_workspace/Projects/4. Investments Monitor/scripts/email_summary.py</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>GMAIL_USER</key>
+        <string>sergey.pochikovskiy@gmail.com</string>
+        <key>GMAIL_PASSWORD</key>
+        <string>YOUR_GMAIL_APP_PASSWORD_HERE</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>12</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/sergeypochikovskiy/.logs/investments-monitor-email.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/sergeypochikovskiy/.logs/investments-monitor-email-error.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
