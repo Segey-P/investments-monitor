@@ -40,17 +40,17 @@ def render(conn) -> None:
     for h, mv_cad, pl, pl_pct in holdings_data:
         rows.append({
             "Ticker":     h.ticker,
-            "Yahoo":      f"https://finance.yahoo.com/quote/{h.yahoo_ticker}",
+            "Ticker Link": f"https://finance.yahoo.com/quote/{h.yahoo_ticker}",
             "Curr":       h.currency,
             "Qty":        h.quantity,
             "ACB/sh":     h.acb_per_share,
             "Price":      h.price_native if h.price_native is not None else None,
-            "Day %":      fmt_change_pct(h.price_native, h.prev_close_native),
             "Mkt Value":  fmt_cad(mv_cad) if mv_cad is not None else "—",
             "P/L":        fmt_cad(pl) if pl is not None else "—",
             "P/L %":      fmt_pct(pl_pct) if pl_pct is not None else "—",
             "Class":      h.asset_class,
             "Category":   h.category,
+            "_id":        h.id,
         })
 
     cols = st.columns(4)
@@ -62,27 +62,68 @@ def render(conn) -> None:
     st.divider()
 
     df = pd.DataFrame(rows)
-    st.dataframe(
+
+    # Initialize session state for holdings edits
+    if "holdings_original" not in st.session_state:
+        st.session_state["holdings_original"] = {r["_id"]: r for r in rows}
+
+    edited_df = st.data_editor(
         df,
         hide_index=True,
         width="stretch",
-        column_order=["Ticker", "Yahoo", "Curr", "Qty", "ACB/sh", "Price", "Day %",
-                      "Mkt Value", "P/L", "P/L %", "Class", "Category"],
+        use_container_width=True,
+        column_order=["Ticker", "Ticker Link", "Curr", "Qty", "ACB/sh", "Price", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
         column_config={
-            "Yahoo":       st.column_config.LinkColumn(
-                "↗", help="Open on Yahoo Finance",
+            "Ticker":      st.column_config.TextColumn(disabled=True),
+            "Ticker Link": st.column_config.LinkColumn(
+                help="Open on Yahoo Finance",
                 display_text="↗", width="small",
             ),
-            "Qty":         st.column_config.NumberColumn(format="%.2f"),
-            "ACB/sh":      st.column_config.NumberColumn(format="%.2f"),
-            "Price":       st.column_config.NumberColumn(format="%.2f"),
-            "Day %":       st.column_config.TextColumn(width="small"),
-            "Mkt Value":   st.column_config.TextColumn(),
-            "P/L":         st.column_config.TextColumn(),
-            "P/L %":       st.column_config.TextColumn(),
-            "Category":    st.column_config.TextColumn(width="small"),
+            "Qty":         st.column_config.NumberColumn(format="%.2f", disabled=True),
+            "ACB/sh":      st.column_config.NumberColumn(format="%.2f", disabled=True),
+            "Price":       st.column_config.NumberColumn(format="%.2f", disabled=True),
+            "Mkt Value":   st.column_config.TextColumn(disabled=True),
+            "P/L":         st.column_config.TextColumn(disabled=True),
+            "P/L %":       st.column_config.TextColumn(disabled=True),
+            "Class":       st.column_config.SelectboxColumn(
+                options=["Cash", "Stock", "ETF", "LeveragedETF", "Crypto"],
+            ),
+            "Curr":        st.column_config.TextColumn(disabled=True),
+            "Category":    st.column_config.SelectboxColumn(
+                options=["Cash", "Dividend", "Growth", "Other"],
+            ),
         },
+        key="holdings_editor",
     )
+
+    # Save button and logic
+    if st.button("💾 Save Changes", key="holdings_save"):
+        changes_count = 0
+        with conn:
+            for edited_row in edited_df.to_dict(orient="records"):
+                holding_id = int(edited_row["_id"])
+                orig = st.session_state["holdings_original"].get(holding_id, {})
+
+                if orig.get("Category") != edited_row["Category"]:
+                    conn.execute(
+                        "UPDATE holdings SET category = ? WHERE id = ?",
+                        (edited_row["Category"], holding_id),
+                    )
+                    changes_count += 1
+
+                if orig.get("Class") != edited_row["Class"]:
+                    conn.execute(
+                        "UPDATE holdings SET asset_class = ? WHERE id = ?",
+                        (edited_row["Class"], holding_id),
+                    )
+                    changes_count += 1
+
+        if changes_count > 0:
+            st.success(f"✓ Saved {changes_count} change(s)")
+            st.session_state["holdings_original"] = {r["_id"]: r for r in edited_df.to_dict(orient="records")}
+            st.rerun()
+        else:
+            st.info("No changes to save")
 
     st.caption(f"1 USD = {fx.rate:.4f} CAD · {fx.as_of}"
                + (" · stale" if fx.stale else ""))

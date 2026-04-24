@@ -132,52 +132,6 @@ def render(conn) -> None:
         st.progress(min(util, 1.0),
                     text=f"{util * 100:.1f}% · {fmt_cad(h_drawn)} of {fmt_cad(h_limit)}")
 
-        st.markdown("#### Entries")
-        ledger_rows = conn.execute(
-            "SELECT id, date, amount_cad, purpose FROM heloc_draws ORDER BY date DESC, id DESC"
-        ).fetchall()
-        if ledger_rows:
-            df = pd.DataFrame([dict(r) for r in ledger_rows])
-            st.dataframe(
-                df, hide_index=True, width="stretch",
-                column_config={"amount_cad": st.column_config.NumberColumn(format="$%.2f")},
-            )
-        else:
-            st.caption("No entries yet.")
-
-        with st.expander("Add entry"):
-            c1, c2, c3, c4 = st.columns([2, 2, 3, 1])
-            new_date = c1.date_input("Date", value=date.today(), key="lev_add_date")
-            new_amt = c2.number_input("Amount (CAD)", step=100.0, format="%.2f",
-                                       key="lev_add_amt",
-                                       help="Positive = draw, negative = repayment")
-            new_purpose = c3.text_input("Purpose", key="lev_add_purpose")
-            if c4.button("Add", key="lev_add_btn"):
-                if new_amt != 0:
-                    with conn:
-                        conn.execute(
-                            "INSERT INTO heloc_draws (date, amount_cad, purpose) VALUES (?, ?, ?)",
-                            (new_date.isoformat(), new_amt, new_purpose or None),
-                        )
-                    st.success("Entry added.")
-                    st.rerun()
-
-        with st.expander("Remove entry"):
-            if ledger_rows:
-                pick = st.selectbox(
-                    "Entry", options=[r["id"] for r in ledger_rows],
-                    format_func=lambda i: next(
-                        f"{r['date']} · ${r['amount_cad']:.2f} · {r['purpose'] or ''}"
-                        for r in ledger_rows if r["id"] == i
-                    ),
-                    key="lev_rm_pick",
-                )
-                if st.button("Remove", key="lev_rm_btn"):
-                    with conn:
-                        conn.execute("DELETE FROM heloc_draws WHERE id = ?", (pick,))
-                    st.warning("Removed.")
-                    st.rerun()
-
     # ========================= Margin tab =========================
     with tab_margin:
         m = conn.execute("SELECT * FROM margin_account WHERE id = 1").fetchone()

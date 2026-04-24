@@ -5,7 +5,7 @@ import streamlit as st
 
 from app import calcs
 from app.fx import get_usdcad
-from app.theme import fmt_cad, kpi_tile
+from app.theme import PALETTE, fmt_cad, kpi_tile
 
 
 def render(conn) -> None:
@@ -14,7 +14,6 @@ def render(conn) -> None:
     port = calcs.summarize(hs, fx.rate)
     nw = calcs.net_worth(conn, port.portfolio_cad)
 
-    cash_bal = float(nw.cash_cad)
     heloc_drawn = float(nw.heloc_drawn_cad)
     margin_drawn = float(nw.margin_balance_cad)
 
@@ -28,7 +27,7 @@ def render(conn) -> None:
     total_manual_assets = sum(float(a["amount_cad"]) for a in manual_assets)
     total_manual_liabs = sum(float(l["amount_cad"]) for l in manual_liabs)
 
-    total_assets = nw.portfolio_cad + cash_bal + total_manual_assets
+    total_assets = nw.portfolio_cad + total_manual_assets
     total_liabs = heloc_drawn + margin_drawn + total_manual_liabs
     net_w = total_assets - total_liabs
     dte = (total_liabs / net_w) if net_w > 0 else 0.0
@@ -36,24 +35,20 @@ def render(conn) -> None:
     st.markdown("### Net Worth Ledger")
 
     tiles = [
-        kpi_tile("Net Worth",      fmt_cad(net_w)),
-        kpi_tile("Total Assets",   fmt_cad(total_assets)),
-        kpi_tile("Total Liabs",    fmt_cad(total_liabs)),
-        kpi_tile("Debt-to-Equity", f"{dte:.2f}",
-                 "Low <0.5 · Caution 0.5–1 · High 1+"),
+        kpi_tile("Net Worth",    fmt_cad(net_w)),
+        kpi_tile("Total Assets", fmt_cad(total_assets)),
+        kpi_tile("Total Liabs",  fmt_cad(total_liabs)),
     ]
-    cols = st.columns(4)
+    cols = st.columns(3)
     for col, html in zip(cols, tiles):
         col.markdown(html, unsafe_allow_html=True)
 
     st.markdown("&nbsp;", unsafe_allow_html=True)
-    left, right = st.columns([3, 2])
 
-    with left:
+    with st.container():
         st.markdown("#### Ledger")
         rows = [
             ("Asset", "Portfolio (auto)", nw.portfolio_cad),
-            ("Asset", "Cash", cash_bal),
         ] + [
             ("Asset", a["name"], float(a["amount_cad"])) for a in manual_assets
         ] + [
@@ -62,14 +57,39 @@ def render(conn) -> None:
         ] + [
             ("Liability", l["name"], float(l["amount_cad"])) for l in manual_liabs
         ]
-        df = pd.DataFrame([
-            {"Type": t, "Item": item, "CAD": val} for t, item, val in rows
-        ])
-        st.dataframe(
-            df,
-            hide_index=True,
-            width="stretch",
-            column_config={"CAD": st.column_config.NumberColumn(format="$%.0f")},
+
+        # Render styled HTML table
+        head_cells = [
+            f'<th style="text-align:left;padding:6px 8px;font-size:9px;'
+            f'color:{PALETTE["textDim"]};letter-spacing:0.06em;font-weight:600;'
+            f'border-bottom:1px solid {PALETTE["border"]};text-transform:uppercase;">{label}</th>'
+            for label in ["Item", "Amount"]
+        ]
+
+        body_rows = []
+        for t, item, val in rows:
+            if t == "Asset":
+                color = PALETTE["green"]
+                val_display = f"${val:,.0f}"
+            else:  # Liability
+                color = PALETTE["red"]
+                val_display = f"(${val:,.0f})"
+
+            bg = PALETTE["bgRaised"] if len(body_rows) % 2 else "transparent"
+            body_rows.append(
+                f'<tr style="background:{bg};">'
+                f'<td style="padding:6px 8px;border-bottom:1px solid {PALETTE["border"]};">{item}</td>'
+                f'<td class="mono" style="padding:6px 8px;text-align:right;font-size:11px;'
+                f'color:{color};font-weight:600;border-bottom:1px solid {PALETTE["border"]};">{val_display}</td>'
+                f'</tr>'
+            )
+
+        st.markdown(
+            '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+            f'<thead><tr style="background:{PALETTE["bgRaised"]};">'
+            f'{"".join(head_cells)}</tr></thead>'
+            f'<tbody>{"".join(body_rows)}</tbody></table>',
+            unsafe_allow_html=True,
         )
 
         with st.expander("Add / Edit / Remove"):
@@ -126,22 +146,3 @@ def render(conn) -> None:
                             )
                         st.success(f"Added {l_name}.")
                         st.rerun()
-
-    with right:
-        st.markdown("#### Assets vs Liabilities")
-        chart_df = pd.DataFrame(
-            {"Side": ["Assets", "Liabilities"], "CAD": [total_assets, total_liabs]}
-        ).set_index("Side")
-        st.bar_chart(chart_df, height=200)
-
-        st.markdown("#### D/E Gauge")
-        gauge_zones = [
-            ("Low", 0.5, "#22c55e"),
-            ("Caution", 1.0, "#eab308"),
-            ("High", float("inf"), "#ef4444"),
-        ]
-        zone_name = "Low"
-        for name, threshold, _ in gauge_zones:
-            if dte >= threshold:
-                zone_name = name
-        st.metric("D/E Zone", zone_name, f"{dte:.2f}")

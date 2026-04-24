@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from app import calcs, prices
@@ -87,12 +88,15 @@ def render(conn) -> None:
 
     st.markdown("&nbsp;", unsafe_allow_html=True)
 
-    left, right = st.columns([1, 2])
+    left, right = st.columns(2)
+
+    public_view = st.session_state.get("public_view", False)
 
     with left:
         _allocation_widget(holdings, fx.rate)
-        st.markdown("&nbsp;", unsafe_allow_html=True)
-        _watchlist_mini(conn)
+        if public_view:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
+            _watchlist_mini(conn)
 
     with right:
         _top_holdings_table(holdings, port.portfolio_cad, fx.rate)
@@ -113,11 +117,16 @@ def _allocation_widget(holdings, usdcad: float) -> None:
     if not alloc:
         st.info("No priced positions yet.")
         return
-    df = pd.DataFrame(
-        sorted(alloc.items(), key=lambda kv: -kv[1]),
-        columns=["Bucket", "Share"],
+    items = sorted(alloc.items(), key=lambda kv: -kv[1])
+    labels = [item[0] for item in items]
+    values = [item[1] for item in items]
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
+    fig.update_layout(
+        height=280,
+        margin=dict(l=0, r=0, t=0, b=0),
+        showlegend=True,
     )
-    st.bar_chart(df.set_index("Bucket")["Share"], height=240)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 def _watchlist_mini(conn) -> None:

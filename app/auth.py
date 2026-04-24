@@ -62,8 +62,8 @@ def _pre_auth_summary(conn) -> None:
         if top:
             head_cells = []
             for label, align in [
-                ("Ticker", "left"), ("Acct", "left"), ("Mkt Value", "right"),
-                ("Today", "right"), ("P/L", "right"),
+                ("Ticker", "left"), ("Acct", "left"), ("% Portfolio", "right"),
+                ("Today", "right"), ("P/L %", "right"),
             ]:
                 head_cells.append(
                     f'<th style="text-align:{align};padding:6px 8px;font-size:9px;'
@@ -73,7 +73,10 @@ def _pre_auth_summary(conn) -> None:
 
             body_rows = []
             for i, (h, mv) in enumerate(top):
+                cost = h.cost_cad(fx.rate)
                 pl = h.unrealized_pl_cad(fx.rate) or 0.0
+                portfolio_pct = (mv / port.portfolio_cad * 100) if port.portfolio_cad > 0 else 0.0
+                pl_pct = ((pl / cost) * 100) if cost > 0 else 0.0
                 pl_color = PALETTE["green"] if pl >= 0 else PALETTE["red"]
                 usd_badge = (
                     f' <span style="font-size:8px;color:{PALETTE["amber"]};'
@@ -90,12 +93,12 @@ def _pre_auth_summary(conn) -> None:
                     f'<td style="padding:6px 8px;border-bottom:1px solid {PALETTE["border"]};">'
                     f'{account_badge(h.account_type)}</td>'
                     f'<td class="mono" style="padding:6px 8px;text-align:right;font-size:11px;'
-                    f'border-bottom:1px solid {PALETTE["border"]};">{fmt_cad(mv)}</td>'
+                    f'border-bottom:1px solid {PALETTE["border"]};">{portfolio_pct:.1f}%</td>'
                     f'<td style="padding:6px 8px;text-align:right;'
                     f'border-bottom:1px solid {PALETTE["border"]};">'
                     f'{fmt_change_pct(h.price_native, h.prev_close_native)}</td>'
                     f'<td class="mono" style="padding:6px 8px;text-align:right;font-size:11px;'
-                    f'color:{pl_color};border-bottom:1px solid {PALETTE["border"]};">{fmt_cad(pl)}</td>'
+                    f'color:{pl_color};border-bottom:1px solid {PALETTE["border"]};">{pl_pct:.1f}%</td>'
                     f'</tr>'
                 )
 
@@ -157,12 +160,17 @@ def _pre_auth_summary(conn) -> None:
         st.markdown("#### Allocation by Category")
         alloc = calcs.allocations(hs, fx.rate)["by_category"]
         if alloc:
-            import pandas as pd
-            df = pd.DataFrame(
-                sorted(alloc.items(), key=lambda kv: -kv[1]),
-                columns=["Category", "Share"],
+            import plotly.graph_objects as go
+            items = sorted(alloc.items(), key=lambda kv: -kv[1])
+            labels = [item[0] for item in items]
+            values = [item[1] for item in items]
+            fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
+            fig.update_layout(
+                height=250,
+                margin=dict(l=0, r=0, t=0, b=0),
+                showlegend=True,
             )
-            st.bar_chart(df.set_index("Category")["Share"], height=200)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         else:
             st.caption("No allocations yet.")
 

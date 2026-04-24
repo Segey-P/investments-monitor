@@ -33,14 +33,50 @@ apply_theme()
 conn = init_db()
 
 st.markdown(
-    '<div style="display:flex;justify-content:space-between;align-items:center;'
-    'margin-bottom:12px;">'
-    '<div style="font-family:DM Mono,monospace;font-size:18px;letter-spacing:0.04em;">'
-    'INVESTMENTS MONITOR</div>'
-    '<div style="color:#9ca3af;font-size:12px;">Individual · 🔒 Local</div>'
-    '</div>',
-    unsafe_allow_html=True,
+    """
+    <style>
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .brand {
+        font-family: DM Mono, monospace;
+        font-size: 18px;
+        letter-spacing: 0.04em;
+    }
+    .status {
+        color: #9ca3af;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
+
+if "public_view" not in st.session_state:
+    st.session_state["public_view"] = False
+
+c1, c2 = st.columns([1, 1])
+with c1:
+    st.markdown('<div class="brand">INVESTMENTS MONITOR</div>', unsafe_allow_html=True)
+with c2:
+    cols = st.columns([3, 2])
+    with cols[1]:
+        if st.toggle("☁ Public view", value=st.session_state["public_view"], key="public_view_toggle"):
+            st.session_state["public_view"] = True
+        else:
+            st.session_state["public_view"] = False
+    with cols[0]:
+        st.markdown(
+            f'<div class="status" style="justify-content: flex-end; height: 100%; align-items: center;">'
+            f'Individual · 🔒 Local</div>',
+            unsafe_allow_html=True
+        )
 
 if not auth.tick(conn):
     st.stop()

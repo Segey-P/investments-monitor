@@ -130,7 +130,7 @@ def _render_import_flow(conn) -> None:
         if mismatches:
             st.markdown("**Ticker Mappings (mismatches only)**")
             st.caption(
-                "Review auto-mapped Yahoo symbols. Edit the 'Override' column if needed."
+                "Review auto-mapped Yahoo symbols and categories. Edit columns as needed."
             )
 
             editor_data = []
@@ -139,7 +139,8 @@ def _render_import_flow(conn) -> None:
                     "Questrade": h.ticker,
                     "Description": h.description[:50] if h.description else "—",
                     "Auto-mapped": h.yahoo_ticker,
-                    "Override": flow["overrides"].get(h.ticker, ""),
+                    "Yahoo Override": flow["overrides"].get(("yahoo", h.ticker), ""),
+                    "Category": flow["overrides"].get(("category", h.ticker), h.category),
                     "Currency": h.currency,
                 })
 
@@ -148,16 +149,30 @@ def _render_import_flow(conn) -> None:
                 use_container_width=True,
                 hide_index=True,
                 key="import_ticker_overrides",
+                column_config={
+                    "Category": st.column_config.SelectboxColumn(
+                        options=["Cash", "Dividend", "Growth", "Other"],
+                    ),
+                },
             )
 
             # Store any overrides
             for row in edited:
                 ticker = row["Questrade"]
-                override = row["Override"]
-                if override:
-                    flow["overrides"][ticker] = override
-                elif ticker in flow["overrides"]:
-                    del flow["overrides"][ticker]
+                yahoo_override = row["Yahoo Override"]
+                category_override = row["Category"]
+
+                if yahoo_override:
+                    flow["overrides"][("yahoo", ticker)] = yahoo_override
+                elif ("yahoo", ticker) in flow["overrides"]:
+                    del flow["overrides"][("yahoo", ticker)]
+
+                # Store category if different from default
+                default_cat = next((h.category for h in mismatches if h.ticker == ticker), "Other")
+                if category_override != default_cat:
+                    flow["overrides"][("category", ticker)] = category_override
+                elif ("category", ticker) in flow["overrides"]:
+                    del flow["overrides"][("category", ticker)]
         else:
             st.info("All ticker mappings look good (no mismatches).")
 
@@ -182,8 +197,10 @@ def _render_import_flow(conn) -> None:
 
         # Apply any user overrides to the ParseResult holdings
         for h in parsed.holdings:
-            if h.ticker in flow["overrides"]:
-                h.yahoo_ticker = flow["overrides"][h.ticker]
+            if ("yahoo", h.ticker) in flow["overrides"]:
+                h.yahoo_ticker = flow["overrides"][("yahoo", h.ticker)]
+            if ("category", h.ticker) in flow["overrides"]:
+                h.category = flow["overrides"][("category", h.ticker)]
 
         try:
             result = persist_result(conn, path, parsed)
