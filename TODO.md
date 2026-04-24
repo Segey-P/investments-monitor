@@ -3,8 +3,10 @@
 ## Current state (2026-04-24)
 Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, removed public toggle, hidden Streamlit buttons. Holdings: removed account count display. Imports: cash now tracked as individual portfolio holdings (ticker='cash', price=1.0) instead of aggregate only. All icons and UI stripped to essentials.
 
+**Decision:** Local-only (no cloud). Privacy-first. Will pivot to Claude Code routines for email summaries instead of web deployment.
+
 ## Top tasks (next)
-- [x] **Phase 4 — Path C web deploy** (2026-04-24 — implementation complete, awaiting your setup)
+- [ ] **Phase 4 — Daily Claude Email Routine** (generate portfolio summary emails)
 
 ---
 
@@ -58,23 +60,15 @@ Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, rem
 - [x] Skip Yahoo Finance linking for cash ticker (plain text display)
 - [x] Skip price fetching for cash entries
 
-### Phase 4 — Path C deploy ✅
+### Phase 4 — Claude Email Routine (pending)
 
-**Local (Mac):**
-- [x] `scripts/refresh.py` — fetch prices + FX, regen `public/summary.json`, commit + push (SSH key auth)
-- [x] `public/summary.json` generator (full spec §4.2 schema: ratios, allocations, tickers, prices, watchlist)
-- [x] `launchd` plist — daily 5pm refresh (+ manual trigger via GitHub Actions)
-- [x] Install + setup documentation (PHASE-4-DEPLOY.md)
+**Goal:** Daily Claude Code routine that reads `data/portfolio.db` and emails a summary.
 
-**Cloud (Streamlit Community Cloud):**
-- [x] Deploy second instance reading `public/summary.json` only
-- [x] Env flag: `IM_DATA_SOURCE=cloud` to toggle mode (local DB vs. JSON)
-- [x] Password gate (Streamlit native)
-- [x] Pre-auth page showing public summary (allocations, ratios, leverage, watchlist)
-- [x] Stale detection: banner if data >6h old
-- [x] Post-auth: simplified UI (Dashboard + Holdings tabs only, no Settings/Leverage)
-- [x] GitHub Actions workflow for manual refresh trigger (`.github/workflows/refresh.yml`)
-- [ ] "Refresh Now" button wired to GitHub Actions API (requires PAT in secrets; manual trigger works via GitHub UI)
+- [ ] Create `AGENTS.md` with routine spec (similar to this CLAUDE.md)
+- [ ] Claude Code daily agent: connect to local DB, compute portfolio summary, generate email HTML
+- [ ] Email template: key metrics, allocations, top holdings, watchlist
+- [ ] Schedule: daily at market close (5pm PT) or on-demand
+- [ ] Destination: sergey.pochikovskiy@gmail.com
 
 ### Phase 5 — Polish / defer gate
 Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?
