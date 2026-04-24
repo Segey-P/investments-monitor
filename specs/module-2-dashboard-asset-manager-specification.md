@@ -25,29 +25,35 @@ Provide the user-facing views for monitoring, plus management of non-market asse
 ### B. Holdings
 
 - Filter pills by account type (DB value `Unreg` rendered as "Non-Reg").
-- Sortable columns: Ticker · ↗ (Yahoo link) · Curr · Qty · ACB/sh · Price · Mkt Value · P/L · P/L % · Asset Class.
+- Sortable columns: Ticker · ↗ (Yahoo link) · Curr · Qty · ACB/sh · Price · Day % · Mkt Value · P/L · P/L % · Asset Class.
+  - **Day %** shows today's price change: ▲ (gain, green) / ▼ (loss, red), e.g. "▲ 1.23%".
   - **P/L %** formula: `(price_native / acb_per_share) − 1` (percentage return in native currency).
   - Rows sorted by market value (descending) by default.
 - USD positions show CAD-converted value as the Mkt Value column (BOC rate). No per-ticker currency toggle.
+- **Number formatting (smart decimals):**
+  - Amounts < $1,000: show 2 decimals (e.g., $123.45)
+  - Amounts ≥ $1,000: show 0 decimals (e.g., $1,234)
 - Colorblind-safe P/L: ▲ (gain, green `#22c55e`) / ▼ (loss, red `#ef4444`). Shape + color.
 - **Header summary bar** (above table): Total Portfolio · P/L · Position count · Account count.
 - **No detail drawer** — ACB is entered once, no transaction history.
 
 ### C. Leverage (HELOC + Margin)
 
-Tabbed screen: **HELOC | Margin**. Both borrowing sources roll up into a shared KPI strip.
+Tabbed screen: **What-if | HELOC | Margin**. Both borrowing sources roll up into a shared KPI strip.
 
-- **KPI strip (6 tiles):** HELOC drawn · HELOC available · Margin balance · Total borrowed · Leverage Ratio · Margin buffer.
+- **KPI strip (6 tiles):** HELOC Drawn · Margin Drawn · Total Util % · HELOC Available · Margin Available · Zone (Safe/Caution/High).
+- **What-if tab:**
+  - HELOC scenario slider: Additional draw → shows new drawn, new util %, new ratio, new monthly interest.
+  - Margin scenario slider: Additional draw → shows new drawn, new util %, new ratio, new monthly interest.
 - **HELOC tab:**
-  - Update balances (amount drawn, credit limit).
+  - Update balances (amount drawn, credit limit, rate).
   - Utilization bar + stats (drawn / available).
-  - **Drawdown ledger:** Date · Amount · Purpose (free-text). No tax-deductible column.
-  - **What-if slider:** Additional draw; shows new balance, new ratio, new monthly interest, safety zone.
+  - **Entries ledger:** Date · Amount · Purpose (free-text).
+  - Add/remove entry actions.
 - **Margin tab:**
-  - Update balances (current balance, borrowing limit, broker).
+  - Update balances (amount drawn, borrowing limit, rate).
   - Utilization bar + stats.
   - Margin-call warning (amber banner) when buffer drops below `warn_buffer_pct` (default 50%).
-  - Balance-only (no drawdown ledger).
 - Leverage historical trend chart removed from v0.1 (deferred).
 - "Interest deductibility summary" panel removed from v0.1 (dropped).
 
@@ -66,17 +72,13 @@ Tabbed screen: **HELOC | Margin**. Both borrowing sources roll up into a shared 
 
 ### F. Settings (new screen)
 
-Single form. All fields editable, "Save" at bottom.
-
 - **Security:** Change password · Session timeout (minutes, default 15)
-- **Borrowing:**
-  - *HELOC:* Limit ($CAD) · Rate (% annual) · Utilization warning threshold (% default 80)
-  - *Margin:* Broker · Borrowing limit ($CAD) · Rate (% annual) · Broker call threshold (% equity default 70) · Warning banner threshold (% buffer default 50)
 - **Refresh:** Interval (hours) · Enable scheduled refresh (toggle)
 - **FX:** Source = Bank of Canada daily (read-only). Displays current rate + fetched timestamp + link to BOC chart.
-- **Imports:** List of files in `data/imports/` with Import/Re-import action per file. Maps to Questrade/IBKR parsers.
-- **Public summary:** Path to `public/summary.json` · Last regeneration timestamp · "Regenerate now" button.
+- **Imports:** File browser showing files in `data/imports/`. Status indicator (✓ Imported / ○ New). CLI instructions for import. Duplicate files detected automatically and skipped.
 - **About:** Version, branch, last commit.
+
+*Note:* Borrowing settings (HELOC + Margin) moved to Leverage tab for co-located editing.
 
 ### G. Login Gate
 

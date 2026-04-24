@@ -5,7 +5,7 @@ import streamlit as st
 
 from app import calcs
 from app.fx import get_usdcad
-from app.theme import account_label, fmt_cad
+from app.theme import account_label, fmt_cad, fmt_change_pct, fmt_pct
 
 ACCOUNT_TYPES_DB = ["RRSP", "TFSA", "Unreg", "Crypto"]
 
@@ -27,11 +27,17 @@ def render(conn) -> None:
     port = calcs.summarize(filtered, fx.rate)
 
     rows = []
+    holdings_data = []
     for h in filtered:
         mv_cad = h.mkt_value_cad(fx.rate)
         cost_cad = h.cost_cad(fx.rate)
         pl = None if mv_cad is None else mv_cad - cost_cad
         pl_pct = None if (h.price_native is None or h.acb_per_share == 0) else (h.price_native / h.acb_per_share) - 1
+        holdings_data.append((h, mv_cad, pl, pl_pct))
+
+    holdings_data.sort(key=lambda x: x[1] if x[1] is not None else 0, reverse=True)
+
+    for h, mv_cad, pl, pl_pct in holdings_data:
         rows.append({
             "Ticker":     h.ticker,
             "Yahoo":      f"https://finance.yahoo.com/quote/{h.yahoo_ticker}",
@@ -39,13 +45,12 @@ def render(conn) -> None:
             "Qty":        h.quantity,
             "ACB/sh":     h.acb_per_share,
             "Price":      h.price_native if h.price_native is not None else None,
-            "Mkt Value":  mv_cad,
-            "P/L":        pl,
-            "P/L %":      pl_pct,
+            "Day %":      fmt_change_pct(h.price_native, h.prev_close_native),
+            "Mkt Value":  fmt_cad(mv_cad) if mv_cad is not None else "—",
+            "P/L":        fmt_cad(pl) if pl is not None else "—",
+            "P/L %":      fmt_pct(pl_pct) if pl_pct is not None else "—",
             "Class":      h.asset_class,
         })
-
-    rows.sort(key=lambda r: r["Mkt Value"] if r["Mkt Value"] is not None else 0, reverse=True)
 
     cols = st.columns(4)
     cols[0].markdown(f"**Total:** {fmt_cad(port.portfolio_cad)}")
@@ -60,7 +65,7 @@ def render(conn) -> None:
         df,
         hide_index=True,
         width="stretch",
-        column_order=["Ticker", "Yahoo", "Curr", "Qty", "ACB/sh", "Price",
+        column_order=["Ticker", "Yahoo", "Curr", "Qty", "ACB/sh", "Price", "Day %",
                       "Mkt Value", "P/L", "P/L %", "Class"],
         column_config={
             "Yahoo":       st.column_config.LinkColumn(
@@ -70,9 +75,10 @@ def render(conn) -> None:
             "Qty":         st.column_config.NumberColumn(format="%.2f"),
             "ACB/sh":      st.column_config.NumberColumn(format="%.2f"),
             "Price":       st.column_config.NumberColumn(format="%.2f"),
-            "Mkt Value":   st.column_config.NumberColumn(format="$%.0f"),
-            "P/L":         st.column_config.NumberColumn(format="$%.0f"),
-            "P/L %":       st.column_config.NumberColumn(format="%.2f%%"),
+            "Day %":       st.column_config.TextColumn(width="small"),
+            "Mkt Value":   st.column_config.TextColumn(),
+            "P/L":         st.column_config.TextColumn(),
+            "P/L %":       st.column_config.TextColumn(),
         },
     )
 

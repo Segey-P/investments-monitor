@@ -70,70 +70,6 @@ def render(conn) -> None:
             else:
                 st.success("Timeout saved.")
 
-    # -------------------- Borrowing --------------------
-    heloc = conn.execute("SELECT * FROM heloc_account WHERE id = 1").fetchone()
-    margin = conn.execute("SELECT * FROM margin_account WHERE id = 1").fetchone()
-
-    with st.expander("Borrowing — HELOC", expanded=True):
-        cols = st.columns(3)
-        h_limit = cols[0].number_input(
-            "Limit ($CAD)", min_value=0.0, value=float(heloc["limit_cad"] or 0),
-            step=1000.0, format="%.2f", key="set_h_limit",
-        )
-        h_rate = cols[1].number_input(
-            "Rate (% annual)", min_value=0.0, max_value=30.0,
-            value=float(heloc["rate_pct"] or 0), step=0.05, format="%.2f", key="set_h_rate",
-        )
-        h_warn = cols[2].number_input(
-            "Util warn threshold (%)", min_value=0.0, max_value=100.0,
-            value=float(heloc["util_warn_pct"] or 80), step=1.0, format="%.0f",
-            key="set_h_warn",
-        )
-        if st.button("Save HELOC settings", key="set_h_save"):
-            with conn:
-                conn.execute(
-                    "UPDATE heloc_account SET limit_cad = ?, rate_pct = ?, util_warn_pct = ? WHERE id = 1",
-                    (h_limit, h_rate, h_warn),
-                )
-            st.success("HELOC saved.")
-            st.rerun()
-
-    with st.expander("Borrowing — Margin", expanded=False):
-        cols = st.columns(2)
-        m_broker = cols[0].text_input(
-            "Broker", value=margin["broker"] or "Questrade", key="set_m_broker"
-        )
-        m_limit = cols[1].number_input(
-            "Limit ($CAD)", min_value=0.0, value=float(margin["limit_cad"] or 0),
-            step=1000.0, format="%.2f", key="set_m_limit",
-        )
-        cols = st.columns(3)
-        m_rate = cols[0].number_input(
-            "Rate (% annual)", min_value=0.0, max_value=30.0,
-            value=float(margin["rate_pct"] or 0), step=0.05, format="%.2f", key="set_m_rate",
-        )
-        m_call = cols[1].number_input(
-            "Call threshold (% equity)", min_value=0.0, max_value=100.0,
-            value=float(margin["call_threshold_pct"] or 70), step=1.0, format="%.0f",
-            key="set_m_call",
-        )
-        m_buf = cols[2].number_input(
-            "Warn buffer threshold (% buffer)", min_value=0.0, max_value=100.0,
-            value=float(margin["warn_buffer_pct"] or 50), step=1.0, format="%.0f",
-            key="set_m_buf",
-        )
-        if st.button("Save Margin settings", key="set_m_save"):
-            with conn:
-                conn.execute(
-                    """UPDATE margin_account
-                       SET broker = ?, limit_cad = ?, rate_pct = ?,
-                           call_threshold_pct = ?, warn_buffer_pct = ?
-                       WHERE id = 1""",
-                    (m_broker, m_limit, m_rate, m_call, m_buf),
-                )
-            st.success("Margin saved.")
-            st.rerun()
-
     # -------------------- Refresh --------------------
     with st.expander("Refresh", expanded=False):
         interval = int(_get_setting(conn, "refresh_interval_hours", "4") or "4")
@@ -161,30 +97,21 @@ def render(conn) -> None:
 
     # -------------------- Imports --------------------
     with st.expander("Imports", expanded=False):
-        rows = conn.execute(
-            "SELECT filename, broker, rows, imported_at FROM imports "
-            "ORDER BY imported_at DESC LIMIT 20"
-        ).fetchall()
-        if not rows:
-            st.caption("No imports yet.")
-        else:
-            import pandas as pd
-            df = pd.DataFrame([dict(r) for r in rows])
-            st.dataframe(df, hide_index=True, width="stretch")
-        st.caption(
-            "To import a new file, drop it in `data/imports/` and run "
-            "`python -m scripts.import_questrade <file.xlsx>`."
-        )
+        import_dir = Path(__file__).resolve().parent.parent.parent / "data" / "imports"
+        import_files = sorted([f.name for f in import_dir.glob("*.xlsx") if f.is_file()])
 
-    # -------------------- Public summary --------------------
-    with st.expander("Public summary (cloud payload)", expanded=False):
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        summary_path = repo_root / "public" / "summary.json"
-        last = _get_setting(conn, "summary_last_regenerated", "—")
-        st.markdown(f"**Path:** `{summary_path.relative_to(repo_root)}`")
-        st.markdown(f"**Last regenerated:** {last}")
-        if st.button("Regenerate now", key="set_regen"):
-            st.info("Regeneration hook not yet implemented — Phase 3.")
+        if not import_files:
+            st.caption("No files in `data/imports/` yet.")
+        else:
+            st.markdown("**Available imports:**")
+            existing = {row["filename"] for row in conn.execute("SELECT DISTINCT filename FROM imports").fetchall()}
+            for fname in import_files:
+                status = "✓ Imported" if fname in existing else "○ New"
+                st.markdown(f"- `{fname}` — {status}")
+
+            st.markdown("**To import:**")
+            st.code("python -m scripts.import_questrade <file.xlsx>", language="bash")
+            st.caption("Duplicate files will be skipped automatically.")
 
     # -------------------- About --------------------
     with st.expander("About", expanded=False):

@@ -144,11 +144,11 @@ Point-in-time rollups. PK is `date`; scheduler UPSERTs on each run so the last r
 
 Two borrowing sources are tracked independently but contribute to the same leverage formulas.
 
-- **HELOC:** dedicated drawdown ledger (date + amount + free-text purpose). No tax-deductibility flag.
-- **Margin:** single current balance, manually updated. No drawdown ledger.
-- **Leverage Ratio** = `Portfolio CAD / (Portfolio CAD − HELOC drawn CAD − Margin balance CAD)`. Displayed as gauge and KPI. Zones: Safe 0–1.5×, Caution 1.5–2×, High 2×+.
+- **HELOC:** dedicated drawdown ledger (date + amount + free-text purpose). No tax-deductibility flag. Editable limit and rate.
+- **Margin:** single current balance, manually updated. Editable limit and rate.
+- **Leverage Ratio** = `Portfolio CAD / (Portfolio CAD − HELOC drawn CAD − Margin balance CAD)`. Displayed as KPI. Zones: Safe 0–1.5×, Caution 1.5–2×, High 2×+.
 - **Margin buffer** = `(unreg account value − Margin balance) / unreg account value`. Warning banner when `buffer < warn_buffer_pct/100` (default 50%).
-- **What-if slider (HELOC):** Simulate drawing an additional amount; recompute leverage ratio and monthly interest in-session only (no DB write).
+- **What-if scenarios (separate tab):** Dual sliders allow simulating additional draws for HELOC and Margin independently. Each recomputes leverage ratio and monthly interest in-session only (no DB write).
 - **Monthly interest** = `drawn × (rate_pct / 100) / 12`, computed separately for HELOC and margin. Displayed, not stored per period.
 - **Tax-deductibility calculations are explicitly out of scope.** User handles tax treatment externally.
 

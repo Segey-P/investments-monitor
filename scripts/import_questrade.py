@@ -55,12 +55,16 @@ def main(path: Path) -> None:
     if not path.exists():
         sys.exit(f"File not found: {path}")
 
+    conn = init_db()
+    existing = conn.execute("SELECT filename FROM imports WHERE filename = ?", (path.name,)).fetchone()
+    if existing:
+        sys.exit(f"File '{path.name}' has already been imported. Skipping.")
+
     importer = QuestradeImporter()
     if not importer.detect_format(path):
         print(f"warning: filename does not look like Questrade — continuing anyway.")
     parsed = importer.parse(path)
 
-    conn = init_db()
     with conn:
         acct_ids = {}
         for num, acct in parsed.accounts.items():

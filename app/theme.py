@@ -104,7 +104,8 @@ def kpi_tile(label: str, value: str, sub: str = "", tone: str = "") -> str:
 def fmt_cad(x: Optional[float]) -> str:
     if x is None:
         return "—"
-    return f"${x:,.0f}"
+    decimals = 2 if abs(x) < 1000 else 0
+    return f"${x:,.{decimals}f}"
 
 
 def fmt_pct(x: Optional[float], digits: int = 1) -> str:
