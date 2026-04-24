@@ -6,7 +6,7 @@ Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, rem
 **Decision:** Local-only (no cloud). Privacy-first. Will pivot to Claude Code routines for email summaries instead of web deployment.
 
 ## Top tasks (next)
-- [ ] **Phase 4 — Daily Claude Email Routine** (generate portfolio summary emails)
+- [x] **Phase 4 — Daily Email Routine** (2026-04-24 — implementation complete)
 
 ---
 
@@ -60,15 +60,14 @@ Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, rem
 - [x] Skip Yahoo Finance linking for cash ticker (plain text display)
 - [x] Skip price fetching for cash entries
 
-### Phase 4 — Claude Email Routine (pending)
+### Phase 4 — Daily Email Routine ✅
 
-**Goal:** Daily Claude Code routine that reads `data/portfolio.db` and emails a summary.
+**Goal:** Daily automated email at 12:30 PM PT with live portfolio data.
 
-- [ ] Create `AGENTS.md` with routine spec (similar to this CLAUDE.md)
-- [ ] Claude Code daily agent: connect to local DB, compute portfolio summary, generate email HTML
-- [ ] Email template: key metrics, allocations, top holdings, watchlist
-- [ ] Schedule: daily at market close (5pm PT) or on-demand
-- [ ] Destination: sergey.pochikovskiy@gmail.com
+- [x] `scripts/email_summary.py` — fetches live prices + FX, generates HTML, sends via SMTP
+- [x] `launchd` plist — runs daily at 12:30 PM PT (no terminal needed)
+- [x] Email template: KPIs (portfolio, P/L, leverage, net worth) + allocations + top holdings + watchlist
+- [x] Setup guide: EMAIL-SETUP.md (Gmail app password, launchd install, troubleshooting)
 
 ### Phase 5 — Polish / defer gate
 Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?
