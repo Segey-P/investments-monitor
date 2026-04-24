@@ -1,13 +1,13 @@
 # Investments Monitor — TODO
 
 ## Current state (2026-04-24)
-Phases 1–3 complete. Dashboard + Holdings + Leverage tabs redesigned per user feedback. Holdings: Day % column added, smart decimal formatting (< $1k → 2 decimals, ≥ $1k → 0 decimals). Leverage: simplified tiles, unified HELOC/Margin structure, What-if scenario tab added, borrowing settings moved to Leverage tab, Settings cleaned up. Settings: removed borrowing (moved to Leverage), removed public summary, simplified imports with duplicate detection.
+Phases 1–3 complete. Dashboard + Holdings + Leverage + Net Worth tabs redesigned per user feedback. Holdings: Day % column, smart decimal formatting. Leverage: simplified tiles, What-if scenario tab, borrowing settings co-located. Net Worth: mortgage + property removed, fully flexible manual assets/liabilities with add/edit/delete, 4-tile KPI strip (removed Mortgage LTV). Settings: borrowing moved to Leverage, public summary removed, imports simplified.
 
 ## Top tasks (next)
 - [x] **Holdings tab review** — user feedback pass ✅ (2026-04-23)
 - [x] **Leverage tab review** — user feedback pass ✅ (2026-04-24)
 - [x] **Settings tab cleanup** — borrowing moved, public summary removed ✅ (2026-04-24)
-- [ ] **Net Worth tab review** — user feedback pass
+- [x] **Net Worth tab review** — user feedback pass ✅ (2026-04-24)
 - [ ] **Watchlist tab review** — user feedback pass (favorites toggle is in place; full UI/UX still TBD)
 - [ ] **Real Questrade CSV** — finalize importer column map (still blocked on user export)
 - [ ] **Phase 4 — Path C web deploy** (after tab reviews land)

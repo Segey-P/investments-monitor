@@ -112,6 +112,22 @@ CREATE TABLE IF NOT EXISTS snapshots (
   leverage_ratio REAL
 );
 
+CREATE TABLE IF NOT EXISTS manual_assets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  amount_cad REAL NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS manual_liabilities (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  amount_cad REAL NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 INSERT OR IGNORE INTO heloc_account (id, limit_cad, rate_pct, util_warn_pct)
   VALUES (1, NULL, NULL, 80);
 INSERT OR IGNORE INTO margin_account (id, broker, balance_cad, limit_cad, rate_pct, call_threshold_pct, warn_buffer_pct)

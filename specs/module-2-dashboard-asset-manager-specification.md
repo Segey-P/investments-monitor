@@ -66,9 +66,11 @@ Tabbed screen: **What-if | HELOC | Margin**. Both borrowing sources roll up into
 
 ### E. Net Worth Ledger
 
-- KPI strip: Net Worth · Total Assets · Total Liabilities · Debt-to-Equity · Mortgage LTV.
-- **Asset/Liability ledger** (left): Portfolio (auto) · Cash (manual) · Other assets (manual) · Property (manual with slider/input) · Mortgage (manual with slider) · HELOC (auto from Leverage screen) · Margin (auto from Leverage screen) · Other debt (manual).
-- **Visualizations** (right): Assets vs Liabilities stacked bar · Household D/E gauge (Low 0–0.5 / Caution 0.5–1 / High 1+) · Mortgage & Property detail (value, balance, equity, LTV, renewal date, rate — all manual).
+- **KPI strip (4 tiles):** Net Worth · Total Assets · Total Liabilities · Debt-to-Equity.
+- **Asset/Liability ledger** (left): Portfolio (auto) · Cash (auto) · Manual assets (user add/edit/delete) · HELOC (auto) · Margin (auto) · Manual liabilities (user add/edit/delete).
+  - Each manual entry has: Name · Amount ($CAD) · Description (optional).
+  - Add/remove actions for each manual entry.
+- **Visualizations** (right): Assets vs Liabilities stacked bar · Household D/E gauge (Low 0–0.5 / Caution 0.5–1 / High 1+).
 
 ### F. Settings (new screen)
 
