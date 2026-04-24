@@ -1,0 +1,22 @@
+# Local data (never commit)
+data/
+Data/
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS / editor
+*.swp
+.idea/
+.vscode/
