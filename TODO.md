@@ -1,12 +1,14 @@
 # Investments Monitor — TODO
 
 ## Current state (2026-04-24)
-Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, removed public toggle, hidden Streamlit buttons. Holdings: removed account count display. Imports: cash now tracked as individual portfolio holdings (ticker='cash', price=1.0) instead of aggregate only. All icons and UI stripped to essentials.
+✅ **Phases 1–4 complete.** 
 
-**Decision:** Local-only (no cloud). Privacy-first. Will pivot to Claude Code routines for email summaries instead of web deployment.
+Dashboard + Holdings + Leverage + Net Worth + Settings (local Streamlit app). Cash tracked as individual holdings (ticker='cash'). Live prices (yfinance) + FX (BOC). Password-protected access. **Daily email summary at 12:30 PM PT** with allocations, top 10 holdings (daily % + daily P/L), and all watchlist favorites.
 
-## Top tasks (next)
-- [x] **Phase 4 — Daily Email Routine** (2026-04-24 — implementation complete)
+**Architecture:** Local-only (SQLite on Mac). No cloud, no public view. Privacy-first.
+
+## Status
+App is production-ready for personal use. Daily email automation running via launchd.
 
 ---
 
@@ -60,14 +62,15 @@ Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, rem
 - [x] Skip Yahoo Finance linking for cash ticker (plain text display)
 - [x] Skip price fetching for cash entries
 
-### Phase 4 — Daily Email Routine ✅
+### Phase 4 — Daily Email Routine ✅ (2026-04-24)
 
 **Goal:** Daily automated email at 12:30 PM PT with live portfolio data.
 
 - [x] `scripts/email_summary.py` — fetches live prices + FX, generates HTML, sends via SMTP
-- [x] `launchd` plist — runs daily at 12:30 PM PT (no terminal needed)
-- [x] Email template: KPIs (portfolio, P/L, leverage, net worth) + allocations + top holdings + watchlist
-- [x] Setup guide: EMAIL-SETUP.md (Gmail app password, launchd install, troubleshooting)
+- [x] `launchd` plist — runs daily at 12:30 PM PT (no terminal needed, Mac just on)
+- [x] Email content: allocations (asset class + account) + top 10 holdings (daily % + daily P/L) + all watchlist favorites
+- [x] Setup guide: EMAIL-SETUP.md (Gmail app password, launchd install, testing, troubleshooting)
+- [x] Daily email live and tested ✅
 
 ### Phase 5 — Polish / defer gate
 Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?
@@ -76,5 +79,15 @@ Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI 
 - [ ] Snapshot retention policy
 - [ ] Claude Code daily-routine documentation
 
+## Future Enhancements (v0.2+)
+
+- [ ] CSV import for IBKR (Interactive Brokers)
+- [ ] Historical snapshots + trend analysis
+- [ ] Mobile app (Claude mobile + API)
+- [ ] Slack/Discord webhook option for daily summary
+- [ ] More email customization (frequency, recipients, format)
+- [ ] Tax lot tracking + ACB detail view
+- [ ] Sector concentration analytics
+
 ## Blocked on user
-- [ ] Real Questrade CSV export — required to finalize the import parser's column map
+- [ ] Real Questrade CSV export (optional — current parser working with test data)

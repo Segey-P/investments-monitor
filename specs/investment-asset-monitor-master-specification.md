@@ -14,16 +14,16 @@ The Integrated Investment & Asset Monitor is a personal portfolio-monitoring sys
 
 ## 3. High-Level Architecture
 
-| Component | v0.1 (this spec) | v1 target | Role |
-|---|---|---|---|
-| **UI** | Streamlit | FastAPI + React | Dashboard and forms |
-| **Backend** | Python (same process as Streamlit) | FastAPI | Business logic |
-| **Storage** | SQLite (`data/portfolio.db`, `.gitignored`) | SQLite | Holdings, HELOC draws, snapshots, settings |
-| **Price engine** | `yfinance` with 15-min cache | unchanged or Polygon | Equity/ETF/crypto quotes |
-| **FX** | Bank of Canada daily rate (cached) | unchanged | USD → CAD conversion |
-| **Scheduler** | macOS `launchd` | unchanged | Price refresh + public summary regen every 4–6h during market hours |
-| **Auth** | Streamlit password gate + session timeout | FastAPI session auth | Protects full-data view |
-| **Cloud deploy** | Streamlit Community Cloud, password-gated, reads `public/summary.json` only | TBD | Remote summary view |
+| Component | v0.1 (this spec) | Role |
+|---|---|---|
+| **UI** | Streamlit (local only) | Dashboard and forms |
+| **Backend** | Python (same process as Streamlit) | Business logic |
+| **Storage** | SQLite (`data/portfolio.db`, `.gitignored`) | Holdings, HELOC draws, snapshots, settings |
+| **Price engine** | `yfinance` with 60-sec cache | Equity/ETF/crypto quotes |
+| **FX** | Bank of Canada daily rate (cached) | USD → CAD conversion |
+| **Scheduler** | macOS `launchd` | Daily email summary at 12:30 PM PT |
+| **Auth** | Streamlit password gate + session timeout | Local access protection |
+| **Email** | `email_summary.py` via SMTP (Gmail) | Daily portfolio summary with allocations, top 10 holdings (daily %), watchlist |
 
 ### 3.1 Repository layout
 
