@@ -1,15 +1,10 @@
 # Investments Monitor — TODO
 
 ## Current state (2026-04-24)
-Phases 1–3 complete. Dashboard + Holdings + Leverage + Net Worth tabs redesigned per user feedback. Holdings: Day % column, smart decimal formatting. Leverage: simplified tiles, What-if scenario tab, borrowing settings co-located. Net Worth: mortgage + property removed, fully flexible manual assets/liabilities with add/edit/delete, 4-tile KPI strip (removed Mortgage LTV). Settings: borrowing moved to Leverage, public summary removed, imports simplified.
+Phases 1–3 complete + refinements. Dashboard: removed watchlist mini view, removed public toggle, hidden Streamlit buttons. Holdings: removed account count display. Imports: cash now tracked as individual portfolio holdings (ticker='cash', price=1.0) instead of aggregate only. All icons and UI stripped to essentials.
 
 ## Top tasks (next)
-- [ ] watchilist - remove from cockpit only keep on public view
-- [ ] allow switching the categorization of the pie chart in the public view the same way as it is in cockpit
-- [ ] remove 'cash' asset from net worth tab. I can add it manually if needed
-- [ ] remove 'stale' column from watchlist
-- [ ] test if the new upload of investment summary will fully update the data (need to clean previous accounts and ticker and upload new)
-- [ ]  **Phase 4 — Path C web deploy** (after tab reviews land)
+- [ ] **Phase 4 — Path C web deploy**
 
 ---
 
@@ -53,14 +48,31 @@ Phases 1–3 complete. Dashboard + Holdings + Leverage + Net Worth tabs redesign
 - [x] Watchlist mini on Dashboard (top 5 favorites); favorite toggle in Watchlist tab edit form
 - [x] Yahoo ticker hyperlinks shared via `theme.yahoo_link()` (used in Dashboard, Holdings, Watchlist)
 
-### Phase 4 — Path C deploy (pending)
-- [ ] `scripts/refresh.py` — full refresh + summary regen + `git push`
-- [ ] `launchd` plist + install docs
-- [ ] `public/summary.json` generator matching master-spec §4.2 schema exactly
-- [ ] Streamlit Cloud deployment reading summary only (env flag `IM_DATA_SOURCE=cloud`)
-- [ ] Password on Streamlit Cloud
-- [ ] Login screen pre-auth public summary
-- [ ] Smoke test: Mac-off scenario (stale banner appears in cloud)
+### UI refinements (2026-04-24) ✅
+- [x] Remove watchlist tab entirely (keep watchlist DB for later use in public view)
+- [x] Remove watchlist mini from Dashboard
+- [x] Remove public view toggle + status display ("Individual · 🔒 Local")
+- [x] Hide Streamlit toolbar buttons (deploy, settings, etc.) via CSS
+- [x] Remove account count from Holdings tab summary
+- [x] Add cash as individual portfolio holdings on import (ticker='cash', price=1.0)
+- [x] Skip Yahoo Finance linking for cash ticker (plain text display)
+- [x] Skip price fetching for cash entries
+
+### Phase 4 — Path C deploy (in progress)
+
+**Local (Mac):**
+- [ ] `scripts/refresh.py` — atomic: fetch prices, recompute calcs, regen `public/summary.json`, commit + push
+- [ ] `public/summary.json` generator (full spec §4.2 schema)
+- [ ] `launchd` plist (e.g., `~/Library/LaunchAgents/com.sergey.investments-monitor.plist`)
+- [ ] Install + cron documentation
+
+**Cloud (Streamlit Community Cloud):**
+- [ ] Deploy second instance (`investments-monitor-public`) reading `public/summary.json` only
+- [ ] Env flag: `IM_DATA_SOURCE=cloud` to toggle mode (local DB vs. JSON)
+- [ ] Password gate (Streamlit native or custom)
+- [ ] Pre-auth login page showing public summary (allocations, ratios, leverage)
+- [ ] Session timeout + warning banner on cloud instance
+- [ ] Smoke test: Mac offline → cloud stale banner triggers
 
 ### Phase 5 — Polish / defer gate
 Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?

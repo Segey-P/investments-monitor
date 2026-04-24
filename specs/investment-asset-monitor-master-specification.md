@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-The Integrated Investment & Asset Monitor is a personal portfolio-monitoring system for a single Canadian investor. It consolidates registered and unregistered investment accounts plus cryptocurrency into a unified analytics dashboard, with special attention to **HELOC leverage** as the differentiating feature. Real estate and mortgage balances are tracked for a holistic net-worth view. Design follows a **Path C privacy model**: summary-only data is exposed via a password-gated cloud deployment; full holdings and dollar amounts stay local.
+The Integrated Investment & Asset Monitor is a personal portfolio-monitoring system for a single Canadian investor. It consolidates registered and unregistered investment accounts plus cryptocurrency into a unified analytics dashboard, with special attention to **HELOC leverage** as the differentiating feature. Real estate and mortgage balances are tracked for a holistic net-worth view. Cash is tracked as individual holdings (ticker='cash') per account on import, eliminating separate aggregate accounting. Design follows a **Path C privacy model**: summary-only data is exposed via a password-gated cloud deployment; full holdings and dollar amounts stay local.
 
 ## 2. Core Objectives
 
