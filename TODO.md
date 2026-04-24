@@ -4,13 +4,12 @@
 Phases 1–3 complete. Dashboard + Holdings + Leverage + Net Worth tabs redesigned per user feedback. Holdings: Day % column, smart decimal formatting. Leverage: simplified tiles, What-if scenario tab, borrowing settings co-located. Net Worth: mortgage + property removed, fully flexible manual assets/liabilities with add/edit/delete, 4-tile KPI strip (removed Mortgage LTV). Settings: borrowing moved to Leverage, public summary removed, imports simplified.
 
 ## Top tasks (next)
-- [x] **Holdings tab review** — user feedback pass ✅ (2026-04-23)
-- [x] **Leverage tab review** — user feedback pass ✅ (2026-04-24)
-- [x] **Settings tab cleanup** — borrowing moved, public summary removed ✅ (2026-04-24)
-- [x] **Net Worth tab review** — user feedback pass ✅ (2026-04-24)
-- [ ] **Watchlist tab review** — user feedback pass (favorites toggle is in place; full UI/UX still TBD)
-- [ ] **Real Questrade CSV** — finalize importer column map (still blocked on user export)
-- [ ] **Phase 4 — Path C web deploy** (after tab reviews land)
+- [ ] watchilist - remove from cockpit only keep on public view
+- [ ] allow switching the categorization of the pie chart in the public view the same way as it is in cockpit
+- [ ] remove 'cash' asset from net worth tab. I can add it manually if needed
+- [ ] remove 'stale' column from watchlist
+- [ ] test if the new upload of investment summary will fully update the data (need to clean previous accounts and ticker and upload new)
+- [ ]  **Phase 4 — Path C web deploy** (after tab reviews land)
 
 ---
 
