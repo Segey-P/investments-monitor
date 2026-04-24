@@ -85,7 +85,8 @@ CREATE TABLE IF NOT EXISTS mortgage (
 CREATE TABLE IF NOT EXISTS watchlist (
   ticker TEXT PRIMARY KEY,
   target_price REAL,
-  notes TEXT
+  notes TEXT,
+  is_favorite INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS imports (

@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Iterable
 
-CACHE_TTL_SECONDS = 15 * 60
+CACHE_TTL_SECONDS = 60  # "live-ish": every Streamlit rerun, deduped within 60s
 _cache: dict[str, tuple[float, "PriceQuote"]] = {}
 
 

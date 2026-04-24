@@ -15,7 +15,7 @@ from app import auth
 from app.db import init_db
 from app.theme import apply_theme
 from app.views import (
-    cockpit,
+    dashboard as dashboard_view,
     holdings as holdings_view,
     leverage as leverage_view,
     net_worth as net_worth_view,
@@ -45,10 +45,10 @@ st.markdown(
 if not auth.tick(conn):
     st.stop()
 
-tabs = st.tabs(["Cockpit", "Holdings", "Leverage", "Net Worth", "Watchlist", "Settings"])
+tabs = st.tabs(["Dashboard", "Holdings", "Leverage", "Net Worth", "Watchlist", "Settings"])
 
 with tabs[0]:
-    cockpit.render(conn)
+    dashboard_view.render(conn)
 with tabs[1]:
     holdings_view.render(conn)
 with tabs[2]:

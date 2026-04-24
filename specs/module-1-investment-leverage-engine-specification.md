@@ -13,7 +13,7 @@ Single-user. Schema keeps a `portfolio_id` column on relevant tables as a forwar
 |---|---|---|
 | id | INTEGER PK | |
 | portfolio_id | TEXT | default `'self'` |
-| account_type | TEXT | Enum: `RRSP` / `TFSA` / `Unreg` / `Crypto`. `Unreg` rendered as "Unregistered" in UI. |
+| account_type | TEXT | Enum: `RRSP` / `TFSA` / `Unreg` / `Crypto`. `Unreg` rendered as "Non-Reg" in UI. |
 | broker | TEXT | e.g. `Questrade` / `IBKR` |
 | label | TEXT | user-friendly name (disambiguates multiple accounts of the same type) |
 
@@ -98,6 +98,7 @@ Single-row table. Manual entry.
 | ticker | TEXT PK | |
 | target_price | REAL | user-set limit, native currency |
 | notes | TEXT | free-text |
+| is_favorite | INTEGER NOT NULL DEFAULT 0 | 1 = pin to Dashboard. Top 5 favorites surface on Dashboard mini-watchlist; UI caps at 5. |
 
 ### `imports`
 Log of broker CSV imports. Drives the Settings → Imports list.
@@ -128,7 +129,7 @@ Point-in-time rollups. PK is `date`; scheduler UPSERTs on each run so the last r
 
 ### A. Account Management
 
-- Account types: DB values `RRSP` / `TFSA` / `Unreg` / `Crypto`. `Unreg` is rendered as "Unregistered" in the UI. Fixed enum in v0.1.
+- Account types: DB values `RRSP` / `TFSA` / `Unreg` / `Crypto`. `Unreg` is rendered as "Non-Reg" in the UI. Fixed enum in v0.1.
 - Multiple accounts of the same type supported (e.g., two RRSPs at different brokers); disambiguated by `label`.
 - Multi-profile (Family / Parents') **deferred**. Schema retains `portfolio_id` for future use.
 

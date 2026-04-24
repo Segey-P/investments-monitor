@@ -19,6 +19,9 @@ PALETTE = {
     "crypto":    "#8b5cf6",
 }
 
+# DB enum value → user-facing label.
+ACCOUNT_LABELS = {"Unreg": "Non-Reg"}
+
 
 def apply_theme() -> None:
     st.markdown(
@@ -43,8 +46,11 @@ def apply_theme() -> None:
           .kpi-label {{ color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }}
           .kpi-value {{ font-family: "DM Mono", ui-monospace, monospace; font-size: 22px; font-weight: 500; margin-top: 4px; }}
           .kpi-sub   {{ color: var(--text-dim); font-size: 11px; margin-top: 2px; font-family: "DM Mono", monospace; }}
+          .kpi-sub a {{ color: var(--text-dim); border-bottom: 1px dotted #4b5563; text-decoration: none; }}
+          .kpi-sub a:hover {{ color: var(--text); border-bottom-color: var(--text-dim); }}
           .gain {{ color: var(--green); }}
           .loss {{ color: var(--red); }}
+          .warn {{ color: var(--amber); }}
           .badge {{
             display: inline-block; padding: 2px 6px; border-radius: 3px;
             font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
@@ -54,6 +60,8 @@ def apply_theme() -> None:
           .badge-tfsa   {{ background: {PALETTE['tfsa']}33;   color: {PALETTE['tfsa']}; }}
           .badge-unreg  {{ background: {PALETTE['unreg']}33;  color: {PALETTE['unreg']}; }}
           .badge-crypto {{ background: {PALETTE['crypto']}33; color: {PALETTE['crypto']}; }}
+          .ticker-link {{ color: inherit; text-decoration: none; border-bottom: 1px dotted #4b5563; }}
+          .ticker-link:hover {{ color: var(--blue); border-bottom-color: var(--blue); }}
           .mono {{ font-family: "DM Mono", ui-monospace, monospace; }}
           [data-testid="stDataFrame"] {{ background: var(--bg-panel); }}
           .stTabs [data-baseweb="tab-list"] {{ background: var(--bg-panel); border-bottom: 1px solid var(--border); }}
@@ -63,15 +71,26 @@ def apply_theme() -> None:
     )
 
 
+def account_label(account_type: str) -> str:
+    return ACCOUNT_LABELS.get(account_type, account_type)
+
+
 def account_badge(account_type: str) -> str:
-    label = {"Unreg": "UNREG"}.get(account_type, account_type.upper())
+    label = account_label(account_type).upper()
     cls = {"RRSP": "badge-rrsp", "TFSA": "badge-tfsa",
            "Unreg": "badge-unreg", "Crypto": "badge-crypto"}.get(account_type, "")
     return f'<span class="badge {cls}">{label}</span>'
 
 
+def yahoo_link(display: str, yahoo_ticker: str | None = None) -> str:
+    """Anchor to Yahoo Finance. `display` is shown text; `yahoo_ticker` overrides URL symbol."""
+    href = f"https://finance.yahoo.com/quote/{yahoo_ticker or display}"
+    return (f'<a href="{href}" target="_blank" rel="noopener noreferrer" '
+            f'class="ticker-link mono">{display}</a>')
+
+
 def kpi_tile(label: str, value: str, sub: str = "", tone: str = "") -> str:
-    tone_class = {"gain": "gain", "loss": "loss"}.get(tone, "")
+    tone_class = {"gain": "gain", "loss": "loss", "warn": "warn"}.get(tone, "")
     return (
         f'<div class="kpi-tile">'
         f'<div class="kpi-label">{label}</div>'
@@ -97,3 +116,22 @@ def fmt_ratio(x: float | None) -> str:
     if x is None or x == 0:
         return "—"
     return f"{x:.2f}×"
+
+
+def fmt_change_pct(price: float | None, prev: float | None) -> str:
+    """Day-change % cell HTML — arrow + green/red, mono."""
+    if price is None or not prev:
+        return '<span class="mono" style="color:#6b7280;">—</span>'
+    pct = (price / prev - 1.0) * 100.0
+    color = PALETTE["green"] if pct >= 0 else PALETTE["red"]
+    arrow = "▲" if pct >= 0 else "▼"
+    return f'<span class="mono" style="color:{color};">{arrow} {abs(pct):.2f}%</span>'
+
+
+def leverage_disclaimer(ratio: float) -> str:
+    """Empty when safe; copy when caution / high."""
+    if ratio is None or ratio <= 0 or ratio < 1.5:
+        return ""
+    if ratio < 2.0:
+        return '<span class="warn">⚠ Caution zone (1.5–2×)</span>'
+    return '<span class="loss">⚠ High leverage (≥2×)</span>'

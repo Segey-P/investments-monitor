@@ -8,12 +8,12 @@ from app import prices
 
 def _load_rows(conn) -> list[dict]:
     rows = conn.execute("""
-        SELECT w.ticker, w.target_price, w.notes,
+        SELECT w.ticker, w.target_price, w.notes, w.is_favorite,
                p.price AS current_price, p.currency AS price_currency,
                p.stale
         FROM watchlist w
         LEFT JOIN prices p ON p.ticker = w.ticker
-        ORDER BY w.notes, w.ticker
+        ORDER BY w.is_favorite DESC, w.notes, w.ticker
     """).fetchall()
     out = []
     for r in rows:
@@ -23,7 +23,9 @@ def _load_rows(conn) -> list[dict]:
         if current is not None and target and target > 0:
             gap = (current - target) / target
         out.append({
+            "★": "★" if r["is_favorite"] else "",
             "Ticker": r["ticker"],
+            "Yahoo": f"https://finance.yahoo.com/quote/{r['ticker']}",
             "Category": r["notes"] or "",
             "Current": current,
             "Target": target,
@@ -83,24 +85,33 @@ def render(conn) -> None:
         df,
         hide_index=True,
         width="stretch",
+        column_order=["★", "Ticker", "Yahoo", "Category", "Current", "Target",
+                      "Gap %", "Cur", "Stale"],
         column_config={
+            "★":       st.column_config.TextColumn("★", width="small",
+                          help="Favorites surface on the Dashboard (top 5)."),
+            "Yahoo":   st.column_config.LinkColumn(
+                          "↗", help="Open on Yahoo Finance",
+                          display_text="↗", width="small",
+                       ),
             "Current": st.column_config.NumberColumn(format="%.2f"),
             "Target":  st.column_config.NumberColumn(format="%.2f"),
             "Gap %":   st.column_config.NumberColumn(format="%.2f%%"),
         },
     )
     st.caption(
-        "Gap % = (current − target) / target. Positive means price is **above** target; "
-        "negative means **below**. Set a target in the Add/Edit form."
+        "Gap % = (current − target) / target. Positive = price **above** target; "
+        "negative = **below**. Pin up to 5 favorites (★) to surface them on the Dashboard."
     )
 
     with st.expander("Edit / remove entries", expanded=False):
         all_tickers = [r["Ticker"] for r in rows]
         pick = st.selectbox("Ticker", all_tickers, key="wl_edit_pick")
         current = conn.execute(
-            "SELECT target_price, notes FROM watchlist WHERE ticker = ?", (pick,)
+            "SELECT target_price, notes, is_favorite FROM watchlist WHERE ticker = ?",
+            (pick,),
         ).fetchone()
-        c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
+        c1, c2, c3, c4, c5 = st.columns([2, 2, 1, 1, 1])
         edit_target = c1.number_input(
             "Target", min_value=0.0,
             value=float(current["target_price"] or 0),
@@ -109,15 +120,33 @@ def render(conn) -> None:
         edit_notes = c2.text_input(
             "Notes", value=current["notes"] or "", key=f"wl_edit_notes_{pick}",
         )
-        if c3.button("Save", key=f"wl_edit_save_{pick}"):
-            with conn:
-                conn.execute(
-                    "UPDATE watchlist SET target_price = ?, notes = ? WHERE ticker = ?",
-                    (edit_target if edit_target > 0 else None, edit_notes.strip() or None, pick),
-                )
-            st.success(f"Updated {pick}.")
-            st.rerun()
-        if c4.button("Remove", key=f"wl_edit_remove_{pick}"):
+        edit_fav = c3.checkbox(
+            "★ Favorite", value=bool(current["is_favorite"]),
+            key=f"wl_edit_fav_{pick}",
+            help="Top 5 favorites show on the Dashboard.",
+        )
+        if c4.button("Save", key=f"wl_edit_save_{pick}"):
+            fav_count = conn.execute(
+                "SELECT COUNT(*) AS c FROM watchlist WHERE is_favorite = 1 AND ticker != ?",
+                (pick,),
+            ).fetchone()["c"]
+            if edit_fav and fav_count >= 5:
+                st.error("Already 5 favorites pinned. Unpin one first.")
+            else:
+                with conn:
+                    conn.execute(
+                        "UPDATE watchlist SET target_price = ?, notes = ?, is_favorite = ? "
+                        "WHERE ticker = ?",
+                        (
+                            edit_target if edit_target > 0 else None,
+                            edit_notes.strip() or None,
+                            int(edit_fav),
+                            pick,
+                        ),
+                    )
+                st.success(f"Updated {pick}.")
+                st.rerun()
+        if c5.button("Remove", key=f"wl_edit_remove_{pick}"):
             with conn:
                 conn.execute("DELETE FROM watchlist WHERE ticker = ?", (pick,))
             st.warning(f"Removed {pick}.")

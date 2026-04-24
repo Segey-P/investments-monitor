@@ -6,29 +6,30 @@ Provide the user-facing views for monitoring, plus management of non-market asse
 
 ## 2. Screens
 
-### A. Cockpit (landing)
+### A. Dashboard (landing)
 
-- **Top nav:** Cockpit · Holdings · Leverage · Net Worth · Watchlist · Settings. Right side: portfolio scope label (v0.1 always "Individual"), cloud-privacy indicator (☁ Public / 🔒 Local).
-- **Account-scope pills:** All · RRSP · TFSA · Unregistered · Crypto.
-- **KPI strip (6 tiles):** Net Worth · Portfolio · Leverage Ratio · HELOC Drawn · Unrealized G/L · Monthly HELOC Interest. Each tile carries a privacy badge.
-- **Allocation widget (multi-dim):** Stacked bar + legend. Dropdown toggles the dimension:
-  - By Account (RRSP / TFSA / Unreg / Crypto)
+- **Top nav:** Dashboard · Holdings · Leverage · Net Worth · Watchlist · Settings. Right side: portfolio scope label (v0.1 always "Individual"), cloud-privacy indicator (☁ Public / 🔒 Local).
+- **Account-scope pills:** All · RRSP · TFSA · Non-Reg · Crypto. (DB value `Unreg` is rendered as "Non-Reg".)
+- **KPI strip (5 tiles):** Net Worth · Portfolio · Unrealized P/L · Leverage Ratio · HELOC Drawn. Each tile carries a privacy badge.
+  - **Net Worth** sub-line: `FX <rate> · <as_of>`. The `<rate>` number is a hyperlink to `https://ca.finance.yahoo.com/quote/CAD=X/`. (No "BOC" mention.)
+  - **Leverage Ratio** sub-line: shown only when ratio enters caution (≥1.5×) or high (≥2×) zones. Empty when safe.
+- **Allocation widget (multi-dim):** Bar chart only — no table beneath. Toggle (radio pills) for dimension:
   - By Asset Class (Cash / Stock / ETF / LeveragedETF / Crypto)
   - By Country (CA / US / Other)
   - By Currency (CAD / USD)
-- **HELOC panel:** Current ratio gauge + what-if slider. No historical sparkline in v0.1.
-- **Asset / Liability summary:** Portfolio, Property, Cash, Mortgage, HELOC → Net Worth. Condensed version of the Net Worth screen.
-- **Watchlist mini:** 3 nearest-to-target rows with current / target / gap.
-- **Top Holdings preview:** Top 4–5 positions by market value. Click → Holdings screen.
+  - **Removed:** "By Account" — redundant with the scope pills.
+- **Watchlist mini:** Top 5 favorites (`is_favorite = 1`, ordered by ticker) with daily change %, current price, target, and gap. UI caps favorites at 5.
+- **Top Holdings table:** Top 10 positions by market value. Columns: Ticker · Acct · Mkt Value · Today · P/L · % Port. Tickers hyperlink to Yahoo Finance (`finance.yahoo.com/quote/<yahoo_ticker>`). USD positions get a small `USD` badge next to the ticker.
+- **Live prices:** Every Dashboard render triggers `prices.get_quotes(...)` for held + favorited tickers; in-process cache caps the fetch rate at 1× per 60s. No manual refresh button on Dashboard.
 
 ### B. Holdings
 
-- Filter pills by account type.
-- Sortable columns: Ticker · Name · Acct · Qty · ACB/sh · Mkt Price · Mkt Value · Unrealized G/L · G/L % · % Portfolio · Asset Class.
+- Filter pills by account type (DB value `Unreg` rendered as "Non-Reg").
+- Sortable columns: Ticker · ↗ (Yahoo link) · Acct · Cur · Qty · ACB/sh · Mkt Price · Mkt Value · P/L · P/L % · % Portfolio · Asset Class.
 - Account tag as colored pill.
 - USD positions show CAD-converted value as the Mkt Value column (BOC rate). No per-ticker currency toggle.
-- Colorblind-safe G/L: ▲ (gain, green `#22c55e`) / ▼ (loss, red `#ef4444`). Shape + color.
-- Footer summary bar: Total Portfolio · Unrealized G/L · Position count · Account count.
+- Colorblind-safe P/L: ▲ (gain, green `#22c55e`) / ▼ (loss, red `#ef4444`). Shape + color.
+- Footer summary bar: Total Portfolio · P/L · Position count · Account count.
 - **No detail drawer** — ACB is entered once, no transaction history.
 
 ### C. Leverage (HELOC + Margin)

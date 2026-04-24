@@ -38,7 +38,7 @@ class HoldingRow:
         c = self.cost_native()
         return c if self.currency == "CAD" else c * usdcad
 
-    def unrealized_gl_cad(self, usdcad: float) -> float | None:
+    def unrealized_pl_cad(self, usdcad: float) -> float | None:
         v = self.mkt_value_cad(usdcad)
         if v is None:
             return None
@@ -81,7 +81,7 @@ def load_holdings(conn) -> list[HoldingRow]:
 @dataclass
 class PortfolioSummary:
     portfolio_cad: float
-    unrealized_gl_cad: float
+    unrealized_pl_cad: float
     position_count: int
     account_count: int
     missing_prices: int
@@ -89,7 +89,7 @@ class PortfolioSummary:
 
 def summarize(holdings: list[HoldingRow], usdcad: float) -> PortfolioSummary:
     total = 0.0
-    gl = 0.0
+    pl = 0.0
     missing = 0
     for h in holdings:
         mv = h.mkt_value_cad(usdcad)
@@ -98,10 +98,10 @@ def summarize(holdings: list[HoldingRow], usdcad: float) -> PortfolioSummary:
             continue
         total += mv
         cost = h.cost_cad(usdcad)
-        gl += mv - cost
+        pl += mv - cost
     return PortfolioSummary(
         portfolio_cad=total,
-        unrealized_gl_cad=gl,
+        unrealized_pl_cad=pl,
         position_count=len(holdings),
         account_count=len({h.account_id for h in holdings}),
         missing_prices=missing,
