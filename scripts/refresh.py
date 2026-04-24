@@ -67,7 +67,11 @@ def generate_summary(conn) -> dict:
 
     # Watchlist favorites
     watchlist_rows = conn.execute(
-        "SELECT ticker, price, target_price FROM watchlist WHERE is_favorite = 1 ORDER BY ticker LIMIT 10"
+        """SELECT w.ticker, p.price, w.target_price
+           FROM watchlist w
+           LEFT JOIN prices p ON p.ticker = w.ticker
+           WHERE w.is_favorite = 1
+           ORDER BY w.ticker LIMIT 10"""
     ).fetchall()
     watchlist_items = []
     for r in watchlist_rows:
