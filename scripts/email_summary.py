@@ -56,7 +56,7 @@ def generate_email_html(conn) -> str:
 
     # Top holdings
     top_holdings = []
-    for h in sorted(holdings_all, key=lambda x: x.mkt_value_cad(fx.rate) or 0, reverse=True)[:8]:
+    for h in sorted(holdings_all, key=lambda x: x.mkt_value_cad(fx.rate) or 0, reverse=True)[:10]:
         mv = h.mkt_value_cad(fx.rate)
         if mv is None:
             continue
@@ -69,13 +69,13 @@ def generate_email_html(conn) -> str:
             "pct_port": pct_port,
         })
 
-    # Watchlist
+    # Watchlist (all favorites)
     watchlist_rows = conn.execute(
         """SELECT w.ticker, p.price, w.target_price
            FROM watchlist w
            LEFT JOIN prices p ON p.ticker = w.ticker
            WHERE w.is_favorite = 1
-           ORDER BY w.ticker LIMIT 5"""
+           ORDER BY w.ticker"""
     ).fetchall()
 
     html = f"""
@@ -107,25 +107,6 @@ def generate_email_html(conn) -> str:
         <div class="container">
             <h1>Portfolio Summary</h1>
             <div class="timestamp">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M PT')}</div>
-
-            <div class="kpi-grid">
-                <div class="kpi">
-                    <div class="kpi-value">{fmt_cad(port.portfolio_cad)}</div>
-                    <div class="kpi-label">Portfolio</div>
-                </div>
-                <div class="kpi">
-                    <div class="kpi-value" style="{'color: #22c55e;' if port.unrealized_pl_cad >= 0 else 'color: #ef4444;'}">{fmt_cad(port.unrealized_pl_cad)}</div>
-                    <div class="kpi-label">Unrealized P/L</div>
-                </div>
-                <div class="kpi">
-                    <div class="kpi-value">{fmt_ratio(lev.leverage_ratio)}</div>
-                    <div class="kpi-label">Leverage</div>
-                </div>
-                <div class="kpi">
-                    <div class="kpi-value">{fmt_cad(nw.net_worth_cad)}</div>
-                    <div class="kpi-label">Net Worth</div>
-                </div>
-            </div>
 
             <h2>Allocations</h2>
             <div>
