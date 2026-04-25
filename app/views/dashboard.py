@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
 from app import calcs, prices
 from app.fx import get_usdcad
 from app.theme import (
-    PALETTE, account_badge, account_label, fmt_cad, fmt_change_pct,
-    fmt_pct, fmt_ratio, kpi_tile, leverage_disclaimer, yahoo_link,
+    PALETTE, fmt_cad, fmt_change_pct,
+    fmt_ratio, kpi_tile, leverage_disclaimer, yahoo_link,
 )
 
 ACCOUNT_TYPES_DB = ["RRSP", "TFSA", "Unreg", "Crypto"]
@@ -86,41 +84,7 @@ def render(conn) -> None:
 
     st.markdown("&nbsp;", unsafe_allow_html=True)
 
-    left, right = st.columns(2)
-
-    with left:
-        _allocation_widget(holdings, fx.rate)
-
-    with right:
-        _top_holdings_table(holdings, port.portfolio_cad, fx.rate)
-
-
-def _allocation_widget(holdings, usdcad: float) -> None:
-    st.markdown("#### Allocation")
-    dim = st.radio(
-        "Allocation dimension",
-        ["Category", "Asset class", "Country", "Currency"],
-        horizontal=True, label_visibility="collapsed", key="alloc_dim",
-    )
-    dim_key = {"Category": "by_category",
-               "Asset class": "by_asset_class",
-               "Country": "by_country",
-               "Currency": "by_currency"}[dim]
-    alloc = calcs.allocations(holdings, usdcad)[dim_key]
-    if not alloc:
-        st.info("No priced positions yet.")
-        return
-    items = sorted(alloc.items(), key=lambda kv: -kv[1])
-    labels = [item[0] for item in items]
-    values = [item[1] for item in items]
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
-    fig.update_layout(
-        height=280,
-        margin=dict(l=0, r=0, t=0, b=0),
-        showlegend=True,
-    )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
+    _top_holdings_table(holdings, port.portfolio_cad, fx.rate)
 
 
 def _top_holdings_table(holdings, portfolio_cad: float, usdcad: float) -> None:

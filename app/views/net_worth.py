@@ -116,13 +116,13 @@ def render(conn) -> None:
         if not st.session_state.get("hide_values", False):
             col1, col2 = st.columns(2)
             with col1:
-                st.session_state.nw_prop_val = st.slider(
+                st.session_state.nw_prop_val = float(st.slider(
                     "Property value (slider)", min_value=0, max_value=3_000_000,
                     value=int(st.session_state.nw_prop_val), step=5000, key="nw_prop_slider"
-                )
+                ))
             with col2:
                 st.session_state.nw_prop_val = st.number_input(
-                    "Property value (type)", value=st.session_state.nw_prop_val, step=5000.0,
+                    "Property value (type)", value=float(st.session_state.nw_prop_val), step=5000.0,
                     format="%.0f", label_visibility="collapsed", key="nw_prop_input"
                 )
 
@@ -155,13 +155,13 @@ def render(conn) -> None:
         if not st.session_state.get("hide_values", False):
             col1, col2 = st.columns(2)
             with col1:
-                st.session_state.nw_mort_bal = st.slider(
+                st.session_state.nw_mort_bal = float(st.slider(
                     "Mortgage balance (slider)", min_value=0, max_value=1_500_000,
                     value=int(st.session_state.nw_mort_bal), step=1000, key="nw_mort_slider"
-                )
+                ))
             with col2:
                 st.session_state.nw_mort_bal = st.number_input(
-                    "Mortgage balance (type)", value=st.session_state.nw_mort_bal, step=1000.0,
+                    "Mortgage balance (type)", value=float(st.session_state.nw_mort_bal), step=1000.0,
                     format="%.0f", label_visibility="collapsed", key="nw_mort_input"
                 )
 
