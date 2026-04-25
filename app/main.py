@@ -20,6 +20,7 @@ from app.views import (
     leverage as leverage_view,
     net_worth as net_worth_view,
     settings as settings_view,
+    watchlist as watchlist_view,
 )
 
 st.set_page_config(
@@ -52,15 +53,17 @@ conn = init_db()
 if not auth.tick(conn):
     st.stop()
 
-tabs = st.tabs(["Dashboard", "Holdings", "Leverage", "Net Worth", "Settings"])
+tabs = st.tabs(["Dashboard", "Holdings", "Watchlist", "Leverage", "Net Worth", "Settings"])
 
 with tabs[0]:
     dashboard_view.render(conn)
 with tabs[1]:
     holdings_view.render(conn)
 with tabs[2]:
-    leverage_view.render(conn)
+    watchlist_view.render(conn)
 with tabs[3]:
-    net_worth_view.render(conn)
+    leverage_view.render(conn)
 with tabs[4]:
+    net_worth_view.render(conn)
+with tabs[5]:
     settings_view.render(conn)

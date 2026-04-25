@@ -44,8 +44,6 @@ def _pre_auth_summary(conn) -> None:
     if port.portfolio_cad == 0:
         return
 
-    st.caption("Public summary — visible pre-auth")
-
     col1, col2 = st.columns(2)
 
     with col1:

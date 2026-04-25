@@ -16,13 +16,21 @@ def render(conn) -> None:
 
     st.markdown("### Holdings")
 
+    col_scope, col_search = st.columns([2, 1])
+
     scope_options = ["All"] + ACCOUNT_TYPES_DB
-    scope_db = st.radio(
+    scope_db = col_scope.radio(
         "Account scope", scope_options,
         format_func=lambda v: account_label(v) if v != "All" else "All",
         horizontal=True, label_visibility="collapsed", key="holdings_scope",
     )
+    search_ticker = col_search.text_input(
+        "Search ticker", placeholder="e.g. TSLA", label_visibility="collapsed", key="holdings_search"
+    )
+
     filtered = holdings if scope_db == "All" else [h for h in holdings if h.account_type == scope_db]
+    if search_ticker:
+        filtered = [h for h in filtered if search_ticker.upper() in h.ticker]
 
     port = calcs.summarize(filtered, fx.rate)
 
@@ -41,6 +49,7 @@ def render(conn) -> None:
         rows.append({
             "Ticker":     h.ticker,
             "Ticker Link": f"https://finance.yahoo.com/quote/{h.yahoo_ticker}",
+            "Name":       h.description or "—",
             "Curr":       h.currency,
             "Qty":        h.quantity,
             "ACB/sh":     h.acb_per_share,
@@ -71,13 +80,14 @@ def render(conn) -> None:
         hide_index=True,
         width="stretch",
         use_container_width=True,
-        column_order=["Ticker", "Ticker Link", "Curr", "Qty", "ACB/sh", "Price", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
+        column_order=["Ticker", "Ticker Link", "Name", "Curr", "Qty", "ACB/sh", "Price", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
         column_config={
             "Ticker":      st.column_config.TextColumn(disabled=True),
             "Ticker Link": st.column_config.LinkColumn(
                 help="Open on Yahoo Finance",
                 display_text="↗", width="small",
             ),
+            "Name":        st.column_config.TextColumn(disabled=True),
             "Qty":         st.column_config.NumberColumn(format="%.2f", disabled=True),
             "ACB/sh":      st.column_config.NumberColumn(format="%.2f", disabled=True),
             "Price":       st.column_config.NumberColumn(format="%.2f", disabled=True),
