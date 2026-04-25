@@ -5,7 +5,7 @@ import streamlit as st
 from app import calcs, prices
 from app.fx import get_usdcad
 from app.theme import (
-    PALETTE, fmt_cad, fmt_change_pct,
+    PALETTE, account_label, fmt_cad, fmt_change_pct,
     fmt_ratio, kpi_tile, leverage_disclaimer, yahoo_link,
 )
 
