@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Investments Monitor v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { width: 100%; height: 100%; }
+  body { background: #0f0f0f; color: #f0f0f0; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #161616; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #444; }
+  input[type=range] { cursor: pointer; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+  a { text-decoration: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="im-data.jsx"></script>
+<script type="text/babel" src="im-ui-v3.jsx?v=5"></script>
+<script type="text/babel" src="im-cockpit-v3.jsx?v=5"></script>
+<script type="text/babel" src="im-holdings-v3.jsx?v=3"></script>
+<script type="text/babel" src="im-leverage-v3.jsx?v=4"></script>
+<script type="text/babel" src="im-watchlist-v3.jsx?v=6"></script>
+<script type="text/babel" src="im-login.jsx?v=3"></script>
+<script type="text/babel" src="im-settings-v3.jsx?v=5"></script>
+
+<!-- ── CHANGE 3 & 4 & 5: Net Worth screen — inline editing + combined inputs + screen-level privacy ── -->
+<script type="text/babel">
+
+// Inline-editable number field — CHANGE 3
+// Click the value to edit in place; blur/Enter to commit
+function InlineEdit({ value, onChange, color, blurred, format, prefix = '$' }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft,   setDraft]   = React.useState('');
+  const inputRef = React.useRef(null);
+
+  function startEdit() { setDraft(String(value)); setEditing(true); }
+  function commit() {
+    const n = parseFloat(draft.replace(/,/g,''));
+    if (!isNaN(n)) onChange(n);
+    setEditing(false);
+  }
+
+  React.useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  if (blurred) return (
+    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:'#444',
+      filter:'blur(4px)', userSelect:'none' }}>{format(value)}</span>
+  );
+
+  if (editing) return (
+    <input ref={inputRef} value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={e => { if (e.key==='Enter') commit(); if (e.key==='Escape') setEditing(false); }}
+      style={{ width:120, padding:'3px 8px', background:'#0f0f0f',
+        border:'1px solid #3b82f6', borderRadius:3, textAlign:'right',
+        color:'#f0f0f0', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none' }}/>
+  );
+
+  return (
+    <span onClick={startEdit} title="Click to edit"
+      style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color: color || '#f0f0f0',
+        cursor:'text', borderBottom:'1px dashed #333', paddingBottom:1,
+        display:'inline-flex', alignItems:'center', gap:5 }}>
+      {format(value)}
+      <span style={{ fontSize:9, color:'#444', fontFamily:"'DM Sans',sans-serif" }}>✎</span>
+    </span>
+  );
+}
+
+// Combined slider + direct number input — CHANGE 4
+function SliderWithInput({ value, onChange, min, max, step, color, label, formatVal }) {
+  const [inputVal, setInputVal] = React.useState(String(value));
+  React.useEffect(() => { setInputVal(String(value)); }, [value]);
+
+  function commitInput() {
+    const n = parseFloat(inputVal.replace(/,/g,''));
+    if (!isNaN(n) && n >= 0) onChange(n);
+    else setInputVal(String(value));
+  }
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+        <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:'#888' }}>{label}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#444' }}>$</span>
+          <input value={inputVal}
+            onChange={e => setInputVal(e.target.value)}
+            onBlur={commitInput}
+            onKeyDown={e => e.key==='Enter' && commitInput()}
+            style={{ width:110, padding:'4px 8px', background:'#1e1e1e',
+              border:'1px solid #2a2a2a', borderRadius:3, textAlign:'right',
+              color:'#f0f0f0', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none' }}/>
+          <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:'#555' }}>CAD</span>
+        </div>
+      </div>
+      <input type="range" min={min} max={Math.max(max, value)} step={step} value={Math.min(value, Math.max(max, value))}
+        onChange={e => { onChange(+e.target.value); setInputVal(String(e.target.value)); }}
+        style={{ width:'100%', accentColor: color }}/>
+      <div style={{ display:'flex', justifyContent:'space-between',
+        fontFamily:"'DM Mono',monospace", fontSize:9, color:'#444', marginTop:2 }}>
+        <span>{formatVal(min)}</span>
+        <span style={{ color:'#555', fontSize:9 }}>type or drag · no ceiling limit</span>
+        <span>{formatVal(max)}</span>
+      </div>
+    </div>
+  );
+}
+
+function NetWorthScreen({ publicView }) {
+  const [propVal,   setPropVal]   = React.useState(MOCK.property.value);
+  const [mortgageV, setMortgage]  = React.useState(MOCK.property.mortgageBalance);
+  const [cash,      setCash]      = React.useState(MOCK.cash);
+
+  const portTotal   = portfolioTotal(MOCK.holdings);
+  const totalAssets = portTotal + propVal + cash;
+  const totalLiab   = mortgageV + MOCK.heloc.drawn + MOCK.margin.balance;
+  const netWorth    = totalAssets - totalLiab;
+  const dte         = totalLiab / (totalAssets - totalLiab);
+  const ltv         = mortgageV / propVal * 100;
+
+  function ratioColor(r) { return r < 0.5 ? DS.green : r < 1.0 ? DS.amber : DS.red; }
+  const fmt = (v) => fmtCAD(v);
+  const fmtK = (v) => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : `$${Math.round(v/1000)}k`;
+
+  return (
+    <div style={{ padding:'20px', display:'grid', gridTemplateColumns:'380px 1fr', gap:12 }}>
+
+      {/* KPI strip */}
+      <div style={{ gridColumn:'1/-1', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }}>
+        <KPICard label="Net Worth" accent={DS.blue}
+          value={fmtCAD(netWorth)} sub="Assets − liabilities" blurred={publicView}/>
+        <KPICard label="Total assets"
+          value={fmtCAD(totalAssets)} sub="Portfolio + property + cash" blurred={publicView}/>
+        <KPICard label="Total liabilities"
+          value={fmtCAD(totalLiab)} sub="Mortgage + HELOC + margin"
+          valueColor={DS.red} blurred={publicView}/>
+        <KPICard label="Debt-to-equity"
+          value={`${dte.toFixed(2)}×`} sub="Liabilities ÷ equity" accent={ratioColor(dte)}/>
+      </div>
+
+      {/* Left: ledger */}
+      <Panel>
+        <div style={{ padding:'9px 14px', borderBottom:`1px solid ${DS.border}`,
+          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <span style={{ fontFamily:DS.fontSans, fontSize:11, fontWeight:600,
+            color:DS.textSub, letterSpacing:0.8, textTransform:'uppercase' }}>
+            Asset / Liability ledger
+          </span>
+          {publicView && (
+            <span style={{ fontFamily:DS.fontSans, fontSize:11, color:DS.amber }}>
+              🙈 Values hidden
+            </span>
+          )}
+        </div>
+
+        <div style={{ padding:'0 14px' }}>
+
+          {/* ASSETS header */}
+          <div style={{ padding:'8px 0 4px', fontFamily:DS.fontSans, fontSize:10,
+            color:DS.green, letterSpacing:1, borderBottom:`1px solid ${DS.border}` }}>ASSETS</div>
+
+          {/* Portfolio — auto, read-only */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+            padding:'9px 0', borderBottom:`1px solid ${DS.border}` }}>
+            <div>
+              <div style={{ fontFamily:DS.fontSans, fontSize:12, color:DS.text }}>Portfolio (auto)</div>
+              <div style={{ fontFamily:DS.fontSans, fontSize:10, color:DS.textFaint }}>RRSP+TFSA+Unreg+Crypto</div>
+            </div>
+            <span style={{ fontFamily:DS.fontMono, fontSize:13, color:DS.text,
+              filter:publicView?'blur(4px)':'none' }}>{fmtCAD(portTotal)}</span>
+          </div>
+
+          {/* Cash — CHANGE 3: inline editable */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center',
+            padding:'9px 0', borderBottom:`1px solid ${DS.border}` }}>
+            <div>
+              <div style={{ fontFamily:DS.fontSans, fontSize:12, color:DS.text }}>Cash / HISA</div>
+              <div style={{ fontFamily:DS.fontSans, fontSize:10, color:DS.textFaint }}>manual · click to edit</div>
+            </div>
+            <ChangeMarker id={3}>
+              <InlineEdit value={cash} onChange={setCash} blurred={publicView}
+                format={fmt} color={DS.text}/>
+            </ChangeMarker>
+          </div>
+
+          {/* Property — CHANGE 4: combined slider + input, no ceiling */}
+          <div style={{ padding:'10px 0', borderBottom:`1px solid ${DS.border}` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <div>
+                <div style={{ fontFamily:DS.fontSans, fontSize:12, color:DS.text }}>Primary residence</div>
+                <div style={{ fontFamily:DS.fontSans, fontSize:10, color:DS.textFaint }}>manual estimate</div>
+              </div>
+              <span style={{ fontFamily:DS.fontMono, fontSize:13,
+                color: publicView ? DS.textFaint : DS.green,
+                filter: publicView ? 'blur(4px)' : 'none' }}>{fmtCAD(propVal)}</span>
+            </div>
+            {!publicView && (
+              <ChangeMarker id={4}>
+                <SliderWithInput value={propVal} onChange={setPropVal}
+                  min={300000} max={2000000} step={5000}
+                  color={DS.green} label="Estimated value"
+                  formatVal={fmtK}/>
+              </ChangeMarker>
+            )}
+          </div>
+
+          {/* Assets total */}
+          <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0',
+            borderBottom:`1px solid ${DS.borderMid}`, fontFamily:DS.fontMono,
+            fontSize:13, fontWeight:700, color:DS.green }}>
+            <span style={{ fontFamily:DS.fontSans, fontSize:13, fontWeight:600 }}>Total assets</span>
+            <span style={{ filter:publicView?'blur(4px)':'none' }}>{fmtCAD(totalAssets)}</span>
+          </div>
+
+          {/* LIABILITIES header */}
+          <div style={{ padding:'8px 0 4px', fontFamily:DS.fontSans, fontSize:10,
+            color:DS.red, letterSpacing:1, borderBottom:`1px solid ${DS.border}` }}>LIABILITIES</div>
+
+          {/* Mortgage — CHANGE 4: combined slider + input */}
+          <div style={{ padding:'10px 0', borderBottom:`1px solid ${DS.border}` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <div>
+                <div style={{ fontFamily:DS.fontSans, fontSize:12, color:DS.text }}>Mortgage balance</div>
+                <div style={{ fontFamily:DS.fontSans, fontSize:10, color:DS.textFaint }}>
+                  {MOCK.property.rate}% fixed · renews {MOCK.property.renewalDate}
+                </div>
+              </div>
+              <span style={{ fontFamily:DS.fontMono, fontSize:13,
+                color:publicView?DS.textFaint:DS.red,
+                filter:publicView?'blur(4px)':'none' }}>({fmtCAD(mortgageV)})</span>
+            </div>
+            {!publicView && (
+              <ChangeMarker id={4}>
+                <SliderWithInput value={mortgageV} onChange={setMortgage}
+                  min={0} max={1000000} step={1000}
+                  color={DS.red} label="Outstanding balance"
+                  formatVal={fmtK}/>
+              </ChangeMarker>
+            )}
+          </div>
+
+          {/* HELOC + margin — auto */}
+          {[
+            { label:'HELOC (auto)',  val:MOCK.heloc.drawn,     sub:'from Leverage screen'   },
+            { label:'Margin (auto)', val:MOCK.margin.balance,  sub:'Questrade unregistered' },
+          ].map(({ label, val, sub }) => (
+            <div key={label} style={{ display:'flex', justifyContent:'space-between',
+              alignItems:'center', padding:'9px 0', borderBottom:`1px solid ${DS.border}` }}>
+              <div>
+                <div style={{ fontFamily:DS.fontSans, fontSize:12, color:DS.text }}>{label}</div>
+                <div style={{ fontFamily:DS.fontSans, fontSize:10, color:DS.textFaint }}>{sub}</div>
+              </div>
+              <span style={{ fontFamily:DS.fontMono, fontSize:13, color:DS.red }}>
+                ({fmtCAD(val)})</span>
+            </div>
+          ))}
+
+          {/* Liabilities total */}
+          <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0',
+            borderBottom:`1px solid ${DS.borderMid}`, fontFamily:DS.fontMono,
+            fontSize:13, fontWeight:700, color:DS.red }}>
+            <span style={{ fontFamily:DS.fontSans, fontSize:13, fontWeight:600 }}>Total liabilities</span>
+            <span style={{ filter:publicView?'blur(4px)':'none' }}>({fmtCAD(totalLiab)})</span>
+          </div>
+
+          {/* Net worth */}
+          <div style={{ display:'flex', justifyContent:'space-between', padding:'12px 0',
+            fontFamily:DS.fontMono, fontSize:16, fontWeight:700, color:DS.blue }}>
+            <span style={{ fontFamily:DS.fontSans, fontSize:14, fontWeight:700 }}>Net worth</span>
+            <span style={{ filter:publicView?'blur(5px)':'none' }}>{fmtCAD(netWorth)}</span>
+          </div>
+        </div>
+      </Panel>
+
+      {/* Right: visualization */}
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        <Panel>
+          <SectionHead>Asset / Liability breakdown</SectionHead>
+          <div style={{ padding:'14px 16px' }}>
+            {[
+              { label:'Assets', items:[
+                { l:'Portfolio', v:portTotal, c:'#3b82f6' },
+                { l:'Property',  v:propVal,   c:'#22c55e' },
+                { l:'Cash',      v:cash,       c:'#a78bfa' },
+              ]},
+              { label:'Liabilities', items:[
+                { l:'Mortgage', v:mortgageV,          c:'#ef4444' },
+                { l:'HELOC',    v:MOCK.heloc.drawn,   c:'#f97316' },
+                { l:'Margin',   v:MOCK.margin.balance,c:'#f59e0b' },
+              ]},
+            ].map(({ label, items }) => {
+              const total = items.reduce((s,i)=>s+i.v, 0);
+              return (
+                <div key={label} style={{ marginBottom:16 }}>
+                  <div style={{ fontFamily:DS.fontSans, fontSize:11, color:DS.textSub, marginBottom:5 }}>
+                    {label} — {fmtCAD(total)}</div>
+                  <div style={{ height:20, display:'flex', borderRadius:3, overflow:'hidden', gap:1, marginBottom:5 }}>
+                    {items.map(it => (
+                      <div key={it.l} title={`${it.l}: ${fmtCAD(it.v)}`}
+                        style={{ flex:it.v, background:it.c, opacity:0.7 }}/>
+                    ))}
+                  </div>
+                  <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+                    {items.map(it => (
+                      <span key={it.l} style={{ fontFamily:DS.fontSans, fontSize:10,
+                        color:DS.textFaint, display:'flex', alignItems:'center', gap:4 }}>
+                        <span style={{ width:7, height:7, background:it.c,
+                          borderRadius:1, display:'inline-block', opacity:0.8 }}/>
+                        {it.l} {(it.v/total*100).toFixed(0)}%
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+
+        <Panel>
+          <SectionHead>Mortgage & property</SectionHead>
+          <div style={{ padding:'12px 16px' }}>
+            {[
+              ['Property value (est.)', fmtCAD(propVal),               DS.text],
+              ['Mortgage balance',      fmtCAD(mortgageV),             DS.red],
+              ['Home equity',           fmtCAD(propVal - mortgageV),   DS.green],
+              ['LTV ratio',             `${ltv.toFixed(1)}%`,          ltv>80?DS.red:ltv>65?DS.amber:DS.green],
+              ['Rate',                  `${MOCK.property.rate}% fixed`,DS.textSub],
+              ['Renewal',               MOCK.property.renewalDate,     DS.textSub],
+            ].map(([lbl, val, col]) => (
+              <div key={lbl} style={{ display:'flex', justifyContent:'space-between',
+                padding:'6px 0', borderBottom:`1px solid ${DS.border}` }}>
+                <span style={{ fontFamily:DS.fontSans, fontSize:12, color:DS.textSub }}>{lbl}</span>
+                <span style={{ fontFamily:DS.fontMono, fontSize:12, color:col, fontWeight:600,
+                  filter:publicView?'blur(4px)':'none' }}>{val}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { NetWorthScreen });
+</script>
+
+<!-- ── Change-review panel ─────────────────────────────────────────────────── -->
+<script type="text/babel">
+
+const CHANGES_LIST = [
+  { id:1,  screen:'Cockpit',   title:'KPI strip reworked',
+    desc:'Removed duplicate Net Worth card (it has its own screen). Added Today\'s Δ (portfolio daily P&L in dollars) and Biggest mover by % change.' },
+  { id:2,  screen:'All screens', title:'Nav screen subtitles',
+    desc:'Active tab now shows a one-liner description of the screen below its label, so you always know where you are.' },
+  { id:3,  screen:'Net Worth', title:'Inline editing for Cash',
+    desc:'The ✎ pencil is now real. Click any editable value to type directly. Press Enter or click away to commit.' },
+  { id:4,  screen:'Net Worth', title:'Combined slider + number input',
+    desc:'Property value and mortgage balance sliders now include a type-in number field. No arbitrary ceiling — type any value above the slider range.' },
+  { id:5,  screen:'Net Worth', title:'Screen-level privacy legend',
+    desc:'Per-row ☁/🔒 badges replaced with a single legend in the panel header. Less clutter, same information.' },
+  { id:6,  screen:'Settings',  title:'Single Save per section',
+    desc:'Settings had 8+ orphaned Save buttons, one per field. Now each section has one "Save changes" button at the bottom. Less visual noise.' },
+  { id:7,  screen:'Leverage',  title:'Portfolio drawdown stress test',
+    desc:'What-if panel now includes a −0% to −50% portfolio drawdown slider. Models how a market drop affects your leverage ratio alongside any HELOC draw.' },
+  { id:8,  screen:'Watchlist', title:'Taller, clearer sparkbar',
+    desc:'52-week range bar is 14px tall (was 4px). Target and current price markers are 3px wide with a glow — visible at a glance.' },
+  { id:9,  screen:'Holdings',  title:'Column visibility toggle',
+    desc:'"Columns ▾" button lets you show/hide optional columns (Name, Asset class, Qty, ACB/sh). Required columns always stay visible.' },
+  { id:10, screen:'Watchlist', title:'Gap % color-coded by distance',
+    desc:'Green = at or below target. Amber = within 10% away. Red = more than 10% above target. Dot indicator makes scanning instant.' },
+];
+
+function ChangePanel({ reviewMode, onClose }) {
+  const [focused, setFocused] = React.useState(null);
+
+  if (!reviewMode) return null;
+
+  function jumpTo(id) {
+    setFocused(id);
+    const el = document.getElementById(`change-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior:'smooth', block:'center' });
+      // Flash highlight
+      el.style.outline = '2px solid #f59e0b';
+      el.style.boxShadow = '0 0 20px rgba(245,158,11,0.3)';
+      setTimeout(() => {
+        el.style.outline = '1.5px dashed rgba(245,158,11,0.6)';
+        el.style.boxShadow = '0 0 12px rgba(245,158,11,0.08)';
+      }, 1200);
+    }
+  }
+
+  return (
+    <div style={{
+      position:'fixed', bottom:20, right:20, zIndex:500,
+      width:320, background:'#141414',
+      border:'1px solid rgba(245,158,11,0.4)',
+      borderRadius:6, boxShadow:'0 12px 40px rgba(0,0,0,0.7)',
+      animation:'fadeIn 0.2s ease',
+      display:'flex', flexDirection:'column', maxHeight:'70vh',
+    }}>
+      {/* Header */}
+      <div style={{ padding:'10px 14px', borderBottom:'1px solid #2a2a2a',
+        display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ width:8, height:8, borderRadius:'50%', background:'#f59e0b',
+            display:'inline-block', boxShadow:'0 0 6px #f59e0b88' }}/>
+          <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12,
+            fontWeight:600, color:'#f59e0b' }}>Review mode</span>
+        </div>
+        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#555' }}>
+          {CHANGES_LIST.length} changes</span>
+      </div>
+
+      {/* Change list */}
+      <div style={{ overflowY:'auto', flex:1 }}>
+        {CHANGES_LIST.map(c => (
+          <div key={c.id} onClick={() => jumpTo(c.id)}
+            style={{ padding:'10px 14px', borderBottom:'1px solid #1e1e1e',
+              cursor:'pointer', transition:'background 0.1s',
+              background: focused===c.id ? '#1e1e1e' : 'transparent' }}
+            onMouseEnter={e => e.currentTarget.style.background='#1a1a1a'}
+            onMouseLeave={e => e.currentTarget.style.background=focused===c.id?'#1e1e1e':'transparent'}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+              <span style={{ width:18, height:18, borderRadius:'50%',
+                background:'#f59e0b', color:'#000',
+                fontFamily:"'DM Mono',monospace", fontSize:9, fontWeight:700,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                flexShrink:0, marginTop:1 }}>{c.id}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:6 }}>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12,
+                    fontWeight:600, color:'#f0f0f0' }}>{c.title}</span>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10,
+                    color:'#555', whiteSpace:'nowrap', flexShrink:0 }}>{c.screen}</span>
+                </div>
+                <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11,
+                  color:'#666', marginTop:3, lineHeight:1.45, textWrap:'pretty' }}>{c.desc}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer hint */}
+      <div style={{ padding:'8px 14px', borderTop:'1px solid #1e1e1e', flexShrink:0 }}>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10, color:'#444',
+          fontStyle:'italic' }}>
+          Click a change to highlight it in the page. Toggle "Review changes" in the nav to hide markers.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { ChangePanel, CHANGES_LIST });
+</script>
+
+<!-- ── App shell ──────────────────────────────────────────────────────────── -->
+<script type="text/babel">
+const SESSION_DURATION_S = 600;
+const WARN_BEFORE_S      = 60;
+
+function App() {
+  const [loggedIn,   setLoggedIn]   = React.useState(false);
+  const [screen,     setScreen]     = React.useState(() => localStorage.getItem('im_screen') || 'cockpit');
+  const [scope,      setScope]      = React.useState('all');
+  const [publicView, setPublicView] = React.useState(false);
+  const [reviewMode, setReviewMode] = React.useState(false);
+
+  const [sessionLeft,      setSessionLeft]      = React.useState(null);
+  const [bannerDismissed,  setBannerDismissed]  = React.useState(false);
+  const timerRef = React.useRef(null);
+
+  function resetSession() {
+    clearInterval(timerRef.current);
+    let t = SESSION_DURATION_S;
+    setSessionLeft(null);
+    setBannerDismissed(false);
+    timerRef.current = setInterval(() => {
+      t -= 1;
+      if (t <= WARN_BEFORE_S) setSessionLeft(t);
+      if (t <= 0) { clearInterval(timerRef.current); setLoggedIn(false); setSessionLeft(null); }
+    }, 1000);
+  }
+
+  React.useEffect(() => {
+    if (loggedIn) resetSession();
+    else { clearInterval(timerRef.current); setSessionLeft(null); }
+    return () => clearInterval(timerRef.current);
+  }, [loggedIn]);
+
+  React.useEffect(() => { localStorage.setItem('im_screen', screen); }, [screen]);
+
+  if (!loggedIn) {
+    return <LoginScreen onLogin={() => { setLoggedIn(true); setScreen('cockpit'); }}/>;
+  }
+
+  const bannerShowing  = sessionLeft !== null && !bannerDismissed;
+  const mainTop        = 44 + (bannerShowing ? 36 : 0);
+  const hasScopeStrip  = ['holdings','leverage'].includes(screen);
+  const contentTop     = mainTop + (hasScopeStrip ? 34 : 0);
+
+  return (
+    <window.ChangesCtx.Provider value={{ showMarkers: reviewMode }}>
+      <div style={{ background: DS.bg, minHeight:'100vh' }}>
+        <TopNav
+          screen={screen} setScreen={setScreen}
+          publicView={publicView} setPublicView={setPublicView}
+          reviewMode={reviewMode} setReviewMode={setReviewMode}
+          changeCount={CHANGES_LIST.length}/>
+
+        <SessionBanner
+          secondsLeft={bannerDismissed ? null : sessionLeft}
+          onExtend={resetSession}
+          onDismiss={() => setBannerDismissed(true)}/>
+
+        {hasScopeStrip && (
+          <div style={{ position:'fixed', top:mainTop, left:0, right:0, zIndex:90 }}>
+            <ScopeStrip scope={scope} setScope={setScope}/>
+          </div>
+        )}
+
+        <div style={{ paddingTop:contentTop }}>
+          {screen==='cockpit'   && <CockpitScreen  publicView={publicView} setScreen={setScreen}/>}
+          {screen==='holdings'  && <HoldingsScreen  scope={scope} publicView={publicView}/>}
+          {screen==='leverage'  && <LeverageScreen/>}
+          {screen==='networth'  && <NetWorthScreen   publicView={publicView}/>}
+          {screen==='watchlist' && <WatchlistScreen/>}
+          {screen==='settings'  && <SettingsScreen/>}
+        </div>
+
+        <ChangePanel reviewMode={reviewMode} onClose={() => setReviewMode(false)}/>
+      </div>
+    </window.ChangesCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#0f0f0f"/>
+    <rect x="0" y="0" width="120" height="10" fill="#141414"/>
+    <text x="8" y="7" font-size="5" fill="#3b82f6" font-family="monospace" font-weight="bold">IM v3</text>
+    <circle cx="100" cy="5" r="3" fill="#f59e0b"/>
+    <rect x="8" y="16" width="24" height="16" rx="2" fill="#1e1e1e"/>
+    <rect x="36" y="16" width="24" height="16" rx="2" fill="#1e1e1e"/>
+    <rect x="64" y="16" width="24" height="16" rx="2" fill="#1e1e1e"/>
+    <rect x="8" y="38" width="104" height="34" rx="2" fill="#161616"/>
+    <rect x="12" y="46" width="35" height="3" rx="1" fill="#3b82f6" opacity="0.6"/>
+    <rect x="12" y="52" width="25" height="3" rx="1" fill="#22c55e" opacity="0.6"/>
+    <rect x="12" y="58" width="40" height="3" rx="1" fill="#a78bfa" opacity="0.6"/>
+    <rect x="90" y="42" width="18" height="26" rx="2" fill="#1e1e1e"/>
+    <circle cx="99" cy="48" r="3" fill="#f59e0b"/>
+    <text x="95" y="62" font-size="5" fill="#f59e0b" font-family="monospace">10</text>
+  </svg>
+</template>
+</body>
+</html>
