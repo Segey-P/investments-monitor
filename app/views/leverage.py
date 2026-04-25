@@ -68,39 +68,42 @@ def render(conn) -> None:
         h_rate = float(h["rate_pct"] or 0)
         m_rate = float(m["rate_pct"] or 0)
 
-        st.markdown("#### HELOC Scenario")
-        extra_h = st.slider(
-            "Additional HELOC draw ($CAD)", min_value=0, max_value=int(max(heloc_avail, 1)),
-            value=0, step=500, key="lev_whatif_h",
-        )
+        st.markdown("#### Stress Test")
+        col1, col2 = st.columns(2)
+        with col1:
+            extra_h = st.slider(
+                "Draw HELOC ($CAD)", min_value=0, max_value=int(max(heloc_avail, 1)),
+                value=0, step=500, key="lev_whatif_h",
+            )
+        with col2:
+            drawdown_pct = st.slider(
+                "If markets fall (%)", min_value=0, max_value=50,
+                value=0, step=1, key="lev_whatif_drawdown",
+            )
+
         new_h_drawn = lev.heloc_drawn_cad + extra_h
-        new_h_util = (new_h_drawn / lev.heloc_limit_cad) if lev.heloc_limit_cad else 0.0
-        new_h_mo = new_h_drawn * (h_rate / 100.0) / 12.0
+        stressed_port_val = port.portfolio_cad * (1 - drawdown_pct / 100.0)
+        denom = stressed_port_val - new_h_drawn - lev.margin_balance_cad
+        new_ratio = (stressed_port_val / denom) if denom > 0 else 0.0
+        ratio_delta = new_ratio - lev.leverage_ratio
 
+        has_whatif = extra_h > 0 or drawdown_pct > 0
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("New drawn", fmt_cad(new_h_drawn))
-        c2.metric("New util", fmt_pct(new_h_util))
-        denom = port.portfolio_cad - new_h_drawn - lev.margin_balance_cad
-        new_ratio = (port.portfolio_cad / denom) if denom > 0 else 0.0
-        c3.metric("New ratio", fmt_ratio(new_ratio), _zone_label(new_ratio))
-        c4.metric("New monthly interest", fmt_cad(new_h_mo))
-
-        st.markdown("#### Margin Scenario")
-        extra_m = st.slider(
-            "Additional Margin draw ($CAD)", min_value=0, max_value=int(max(margin_avail, 1)),
-            value=0, step=500, key="lev_whatif_m",
+        c1.metric(
+            "Stressed ratio" if has_whatif else "Current ratio",
+            fmt_ratio(new_ratio),
+            delta=f"{ratio_delta:+.2f}×" if has_whatif else None,
         )
-        new_m_bal = lev.margin_balance_cad + extra_m
-        new_m_util = (new_m_bal / lev.margin_limit_cad) if lev.margin_limit_cad else 0.0
-        new_m_mo = new_m_bal * (m_rate / 100.0) / 12.0
+        c2.metric("Stressed port value", fmt_cad(stressed_port_val) if has_whatif else "—")
+        c3.metric("HELOC balance", fmt_cad(new_h_drawn))
+        c4.metric("Total borrowed", fmt_cad(new_h_drawn + lev.margin_balance_cad))
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("New balance", fmt_cad(new_m_bal))
-        c2.metric("New util", fmt_pct(new_m_util))
-        denom = port.portfolio_cad - new_h_drawn - new_m_bal
-        new_ratio = (port.portfolio_cad / denom) if denom > 0 else 0.0
-        c3.metric("New ratio", fmt_ratio(new_ratio), _zone_label(new_ratio))
-        c4.metric("New monthly interest", fmt_cad(new_m_mo))
+        if new_ratio >= 2.0:
+            st.warning("⚠ Leverage ratio exceeds 2.0× — consider de-risking")
+
+        if has_whatif:
+            if st.button("Reset", key="lev_reset"):
+                st.rerun()
 
     # ========================= HELOC tab =========================
     with tab_heloc:

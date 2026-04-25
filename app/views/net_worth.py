@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pandas as pd
 import streamlit as st
 
 from app import calcs
@@ -12,137 +11,195 @@ def render(conn) -> None:
     fx = get_usdcad(conn)
     hs = calcs.load_holdings(conn)
     port = calcs.summarize(hs, fx.rate)
-    nw = calcs.net_worth(conn, port.portfolio_cad)
 
+    # Load property and mortgage from DB
+    prop_row = conn.execute("SELECT value_cad, as_of FROM property WHERE id=1").fetchone()
+    mort_row = conn.execute("SELECT balance_cad, rate_pct, renewal_date FROM mortgage WHERE id=1").fetchone()
+    cash_row = conn.execute("SELECT balance_cad FROM cash_aggregate WHERE id=1").fetchone()
+
+    # Initialize session state for editable values
+    if "nw_prop_val" not in st.session_state:
+        st.session_state.nw_prop_val = float(prop_row["value_cad"] or 0)
+    if "nw_mort_bal" not in st.session_state:
+        st.session_state.nw_mort_bal = float(mort_row["balance_cad"] or 0)
+    if "nw_cash" not in st.session_state:
+        st.session_state.nw_cash = float(cash_row["balance_cad"] or 0)
+
+    nw = calcs.net_worth(conn, port.portfolio_cad)
     heloc_drawn = float(nw.heloc_drawn_cad)
     margin_drawn = float(nw.margin_balance_cad)
 
-    manual_assets = conn.execute(
-        "SELECT id, name, description, amount_cad FROM manual_assets ORDER BY name"
-    ).fetchall()
-    manual_liabs = conn.execute(
-        "SELECT id, name, description, amount_cad FROM manual_liabilities ORDER BY name"
-    ).fetchall()
-
-    total_manual_assets = sum(float(a["amount_cad"]) for a in manual_assets)
-    total_manual_liabs = sum(float(l["amount_cad"]) for l in manual_liabs)
-
-    total_assets = nw.portfolio_cad + total_manual_assets
-    total_liabs = heloc_drawn + margin_drawn + total_manual_liabs
+    # Recalculate with session state values
+    total_assets = port.portfolio_cad + st.session_state.nw_cash + st.session_state.nw_prop_val
+    total_liabs = st.session_state.nw_mort_bal + heloc_drawn + margin_drawn
     net_w = total_assets - total_liabs
     dte = (total_liabs / net_w) if net_w > 0 else 0.0
+    ltv = (st.session_state.nw_mort_bal / st.session_state.nw_prop_val * 100) if st.session_state.nw_prop_val > 0 else 0.0
 
-    st.markdown("### Net Worth Ledger")
+    st.markdown("### Net Worth")
 
+    # KPI tiles
     tiles = [
-        kpi_tile("Net Worth",    fmt_cad(net_w)),
-        kpi_tile("Total Assets", fmt_cad(total_assets)),
-        kpi_tile("Total Liabs",  fmt_cad(total_liabs)),
+        kpi_tile("Net Worth", fmt_cad(net_w), "Assets − liabilities"),
+        kpi_tile("Total assets", fmt_cad(total_assets), "Portfolio + property + cash"),
+        kpi_tile("Total liabilities", fmt_cad(total_liabs), "Mortgage + HELOC + margin"),
+        kpi_tile("Debt-to-equity", f"{dte:.2f}×", "Liabilities ÷ equity"),
     ]
-    cols = st.columns(3)
+    cols = st.columns(4)
     for col, html in zip(cols, tiles):
         col.markdown(html, unsafe_allow_html=True)
 
     st.markdown("&nbsp;", unsafe_allow_html=True)
 
-    with st.container():
-        st.markdown("#### Ledger")
-        rows = [
-            ("Asset", "Portfolio (auto)", nw.portfolio_cad),
-        ] + [
-            ("Asset", a["name"], float(a["amount_cad"])) for a in manual_assets
-        ] + [
-            ("Liability", "HELOC", heloc_drawn),
-            ("Liability", "Margin", margin_drawn),
-        ] + [
-            ("Liability", l["name"], float(l["amount_cad"])) for l in manual_liabs
-        ]
+    left, right = st.columns([380, 1], gap="medium")
 
-        # Render styled HTML table
-        head_cells = [
-            f'<th style="text-align:left;padding:6px 8px;font-size:9px;'
-            f'color:{PALETTE["textDim"]};letter-spacing:0.06em;font-weight:600;'
-            f'border-bottom:1px solid {PALETTE["border"]};text-transform:uppercase;">{label}</th>'
-            for label in ["Item", "Amount"]
-        ]
+    with left:
+        # Ledger panel
+        st.markdown("#### Asset / Liability Ledger")
 
-        body_rows = []
-        for t, item, val in rows:
-            if t == "Asset":
-                color = PALETTE["green"]
-                val_display = f"${val:,.0f}"
-            else:  # Liability
-                color = PALETTE["red"]
-                val_display = f"(${val:,.0f})"
+        privacy_badge = ""
+        if "hide_values" in st.session_state and st.session_state.hide_values:
+            privacy_badge = '<span style="color:#f59e0b; font-size:10px; float:right;">🙈 Values hidden</span>'
 
-            bg = PALETTE["bgRaised"] if len(body_rows) % 2 else "transparent"
-            body_rows.append(
-                f'<tr style="background:{bg};">'
-                f'<td style="padding:6px 8px;border-bottom:1px solid {PALETTE["border"]};">{item}</td>'
-                f'<td class="mono" style="padding:6px 8px;text-align:right;font-size:11px;'
-                f'color:{color};font-weight:600;border-bottom:1px solid {PALETTE["border"]};">{val_display}</td>'
-                f'</tr>'
+        st.markdown(f"""
+        <div style="background:{PALETTE['bgPanel']};border:1px solid {PALETTE['border']};border-radius:4px;overflow:hidden;">
+            <div style="padding:9px 14px;border-bottom:1px solid {PALETTE['border']};display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:{PALETTE['textDim']};letter-spacing:0.8px;text-transform:uppercase;">Asset / Liability Ledger</span>
+                {privacy_badge}
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Assets section
+        st.markdown(f"""
+        <div style="padding:8px 14px 4px;font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['green']};letter-spacing:1px;border-bottom:1px solid {PALETTE['border']};text-transform:uppercase;">ASSETS</div>
+        """, unsafe_allow_html=True)
+
+        # Portfolio (auto, read-only)
+        col1, col2 = st.columns([0.7, 0.3])
+        col1.markdown(f"""
+        <div style="padding:9px 14px;border-bottom:1px solid {PALETTE['border']};">
+            <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:{PALETTE['text']};">Portfolio (auto)</div>
+            <div style="font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['textDim']};">RRSP+TFSA+Unreg+Crypto</div>
+        </div>
+        """, unsafe_allow_html=True)
+        col2.markdown(f"""
+        <div style="padding:9px 14px;border-bottom:1px solid {PALETTE['border']};text-align:right;font-family:'DM Mono',monospace;font-size:13px;color:{PALETTE['text']};{'filter:blur(4px);' if st.session_state.get('hide_values', False) else ''}">{fmt_cad(port.portfolio_cad)}</div>
+        """, unsafe_allow_html=True)
+
+        # Cash (inline editable)
+        col1, col2 = st.columns([0.7, 0.3])
+        col1.markdown(f"""
+        <div style="padding:9px 14px;border-bottom:1px solid {PALETTE['border']};">
+            <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:{PALETTE['text']};">Cash / HISA</div>
+            <div style="font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['textDim']};">manual · click to edit</div>
+        </div>
+        """, unsafe_allow_html=True)
+        with col2:
+            st.session_state.nw_cash = st.number_input(
+                "Cash value", value=st.session_state.nw_cash, step=1000.0,
+                format="%.2f", label_visibility="collapsed", key="nw_cash_input"
             )
 
-        st.markdown(
-            '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-            f'<thead><tr style="background:{PALETTE["bgRaised"]};">'
-            f'{"".join(head_cells)}</tr></thead>'
-            f'<tbody>{"".join(body_rows)}</tbody></table>',
-            unsafe_allow_html=True,
-        )
+        # Property (slider + input)
+        st.markdown(f"""
+        <div style="padding:10px 14px;border-bottom:1px solid {PALETTE['border']};">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div>
+                    <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:{PALETTE['text']};">Primary residence</div>
+                    <div style="font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['textDim']};">manual estimate</div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:{PALETTE['green'] if not st.session_state.get('hide_values') else PALETTE['textDim']};{'filter:blur(4px);' if st.session_state.get('hide_values', False) else ''}">{fmt_cad(st.session_state.nw_prop_val)}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        with st.expander("Add / Edit / Remove"):
-            st.markdown("**Manage manual assets and liabilities**")
+        if not st.session_state.get("hide_values", False):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.session_state.nw_prop_val = st.slider(
+                    "Property value (slider)", min_value=0, max_value=3_000_000,
+                    value=int(st.session_state.nw_prop_val), step=5000, key="nw_prop_slider"
+                )
+            with col2:
+                st.session_state.nw_prop_val = st.number_input(
+                    "Property value (type)", value=st.session_state.nw_prop_val, step=5000.0,
+                    format="%.0f", label_visibility="collapsed", key="nw_prop_input"
+                )
 
-            with st.container():
-                st.subheader("Assets", divider=True)
-                for asset in manual_assets:
-                    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
-                    c1.text_input("Name", value=asset["name"], disabled=True, key=f"asset_name_{asset['id']}")
-                    c2.number_input("Amount ($CAD)", value=float(asset["amount_cad"]), step=1.0, format="%.2f", key=f"asset_amt_{asset['id']}")
-                    c3.text_input("Desc", value=asset["description"] or "", key=f"asset_desc_{asset['id']}")
-                    if c4.button("Remove", key=f"asset_remove_{asset['id']}"):
-                        with conn:
-                            conn.execute("DELETE FROM manual_assets WHERE id = ?", (asset['id'],))
-                        st.rerun()
+        # Assets total
+        st.markdown(f"""
+        <div style="display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid {PALETTE['borderMid']};font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:{PALETTE['green']};">
+            <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;">Total assets</span>
+            <span style="{'filter:blur(4px);' if st.session_state.get('hide_values', False) else ''}">{fmt_cad(total_assets)}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-                st.text("Add new asset:")
-                a_name = st.text_input("Asset name", key="new_asset_name", placeholder="e.g., Cottage, Car")
-                a_desc = st.text_input("Description", key="new_asset_desc", placeholder="e.g., Net value")
-                a_amt = st.number_input("Amount ($CAD)", min_value=0.0, step=1.0, format="%.2f", key="new_asset_amt")
-                if st.button("Add asset", key="add_asset_btn"):
-                    if a_name.strip():
-                        with conn:
-                            conn.execute(
-                                "INSERT INTO manual_assets (name, description, amount_cad) VALUES (?, ?, ?)",
-                                (a_name.strip(), a_desc.strip() or None, a_amt),
-                            )
-                        st.success(f"Added {a_name}.")
-                        st.rerun()
+        # Liabilities section
+        st.markdown(f"""
+        <div style="padding:8px 14px 4px;font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['red']};letter-spacing:1px;border-bottom:1px solid {PALETTE['border']};text-transform:uppercase;">LIABILITIES</div>
+        """, unsafe_allow_html=True)
 
-            with st.container():
-                st.subheader("Liabilities", divider=True)
-                for liab in manual_liabs:
-                    c1, c2, c3, c4 = st.columns([2, 2, 1, 1])
-                    c1.text_input("Name", value=liab["name"], disabled=True, key=f"liab_name_{liab['id']}")
-                    c2.number_input("Amount ($CAD)", value=float(liab["amount_cad"]), step=1.0, format="%.2f", key=f"liab_amt_{liab['id']}")
-                    c3.text_input("Desc", value=liab["description"] or "", key=f"liab_desc_{liab['id']}")
-                    if c4.button("Remove", key=f"liab_remove_{liab['id']}"):
-                        with conn:
-                            conn.execute("DELETE FROM manual_liabilities WHERE id = ?", (liab['id'],))
-                        st.rerun()
+        # Mortgage (slider + input)
+        st.markdown(f"""
+        <div style="padding:10px 14px;border-bottom:1px solid {PALETTE['border']};">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div>
+                    <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:{PALETTE['text']};">Mortgage balance</div>
+                    <div style="font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['textDim']};">{mort_row['rate_pct']:.2f}% fixed · renews {mort_row['renewal_date']}</div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:{PALETTE['red'] if not st.session_state.get('hide_values') else PALETTE['textDim']};{'filter:blur(4px);' if st.session_state.get('hide_values', False) else ''}">({fmt_cad(st.session_state.nw_mort_bal)})</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-                st.text("Add new liability:")
-                l_name = st.text_input("Liability name", key="new_liab_name", placeholder="e.g., Car loan, Student loan")
-                l_desc = st.text_input("Description", key="new_liab_desc", placeholder="e.g., Monthly payment info")
-                l_amt = st.number_input("Amount ($CAD)", min_value=0.0, step=1.0, format="%.2f", key="new_liab_amt")
-                if st.button("Add liability", key="add_liab_btn"):
-                    if l_name.strip():
-                        with conn:
-                            conn.execute(
-                                "INSERT INTO manual_liabilities (name, description, amount_cad) VALUES (?, ?, ?)",
-                                (l_name.strip(), l_desc.strip() or None, l_amt),
-                            )
-                        st.success(f"Added {l_name}.")
-                        st.rerun()
+        if not st.session_state.get("hide_values", False):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.session_state.nw_mort_bal = st.slider(
+                    "Mortgage balance (slider)", min_value=0, max_value=1_500_000,
+                    value=int(st.session_state.nw_mort_bal), step=1000, key="nw_mort_slider"
+                )
+            with col2:
+                st.session_state.nw_mort_bal = st.number_input(
+                    "Mortgage balance (type)", value=st.session_state.nw_mort_bal, step=1000.0,
+                    format="%.0f", label_visibility="collapsed", key="nw_mort_input"
+                )
+
+        # HELOC + Margin (auto)
+        for label, val in [("HELOC (auto)", heloc_drawn), ("Margin (auto)", margin_drawn)]:
+            st.markdown(f"""
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid {PALETTE['border']};">
+                <div>
+                    <div style="font-family:'DM Sans',sans-serif;font-size:12px;color:{PALETTE['text']}">{label}</div>
+                    <div style="font-family:'DM Sans',sans-serif;font-size:10px;color:{PALETTE['textDim']}">{'from Leverage screen' if 'HELOC' in label else 'Questrade unregistered'}</div>
+                </div>
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:{PALETTE['red']};{'filter:blur(4px);' if st.session_state.get('hide_values', False) else ''}">({fmt_cad(val)})</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Liabilities total
+        st.markdown(f"""
+        <div style="display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid {PALETTE['borderMid']};font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:{PALETTE['red']};">
+            <span style="font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;">Total liabilities</span>
+            <span style="{'filter:blur(4px);' if st.session_state.get('hide_values', False) else ''}">({fmt_cad(total_liabs)})</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Net worth
+        st.markdown(f"""
+        <div style="display:flex;justify-content:space-between;padding:12px 14px;font-family:'DM Mono',monospace;font-size:16px;font-weight:700;color:{PALETTE['blue']};{'filter:blur(5px);' if st.session_state.get('hide_values', False) else ''}">
+            <span style="font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;">Net worth</span>
+            <span>{fmt_cad(net_w)}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # Save button
+        if st.button("💾 Save changes", key="nw_save"):
+            with conn:
+                conn.execute("UPDATE property SET value_cad = ? WHERE id = 1", (st.session_state.nw_prop_val,))
+                conn.execute("UPDATE mortgage SET balance_cad = ? WHERE id = 1", (st.session_state.nw_mort_bal,))
+                conn.execute("UPDATE cash_aggregate SET balance_cad = ? WHERE id = 1", (st.session_state.nw_cash,))
+            st.success("✓ Net worth updated")
+            st.rerun()

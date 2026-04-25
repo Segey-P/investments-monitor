@@ -220,3 +220,23 @@ def net_worth(conn, portfolio_cad: float) -> NetWorth:
         total_assets_cad=assets, total_liabilities_cad=liabs, net_worth_cad=nw,
         debt_to_equity=dte, mortgage_ltv=ltv,
     )
+
+
+def today_delta(holdings: list[HoldingRow], usdcad: float) -> float:
+    """Sum of all holdings' daily dollar change (today's P&L in CAD)."""
+    total = 0.0
+    for h in holdings:
+        mv = h.mkt_value_cad(usdcad)
+        if mv is None or h.day_change_pct() is None:
+            continue
+        daily_change_cad = mv * (h.day_change_pct() / 100.0)
+        total += daily_change_cad
+    return total
+
+
+def biggest_mover(holdings: list[HoldingRow]) -> HoldingRow | None:
+    """Return holding with largest absolute % change today."""
+    valid = [h for h in holdings if h.day_change_pct() is not None]
+    if not valid:
+        return None
+    return max(valid, key=lambda h: abs(h.day_change_pct()))

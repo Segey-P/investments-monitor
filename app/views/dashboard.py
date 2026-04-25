@@ -62,24 +62,25 @@ def render(conn) -> None:
         + (" · stale" if fx.stale else "")
     )
 
-    pl_pct_text = (
-        f"{(port.unrealized_pl_cad / port.portfolio_cad * 100):+.2f}%"
-        if port.portfolio_cad else "—"
-    )
+    today_delta = calcs.today_delta(holdings, fx.rate)
+    biggest = calcs.biggest_mover(holdings)
+    biggest_pct = biggest.day_change_pct() if biggest else 0.0
+
+    today_delta_pct = (today_delta / port.portfolio_cad * 100) if port.portfolio_cad else 0.0
 
     tiles = [
-        kpi_tile("Net Worth", fmt_cad(nw.net_worth_cad), fx_sub),
-        kpi_tile("Portfolio", fmt_cad(port.portfolio_cad),
-                 f"{port.position_count} positions · {port.account_count} accts"),
-        kpi_tile("Unrealized P/L", fmt_cad(port.unrealized_pl_cad),
-                 sub=pl_pct_text,
-                 tone=("gain" if port.unrealized_pl_cad >= 0 else "loss")),
+        kpi_tile("Portfolio value", fmt_cad(port.portfolio_cad),
+                 f"{port.position_count} positions"),
+        kpi_tile("Today's Δ", fmt_cad(today_delta),
+                 sub=f"{today_delta_pct:+.2f}% on portfolio",
+                 tone=("gain" if today_delta >= 0 else "loss")),
+        kpi_tile("Biggest mover", f"{biggest.ticker if biggest else '—'}",
+                 sub=f"{'▲' if biggest_pct >= 0 else '▼'} {abs(biggest_pct):.2f}% today" if biggest else "—",
+                 tone=("gain" if biggest_pct >= 0 else "loss") if biggest else None),
         kpi_tile("Leverage Ratio", fmt_ratio(lev.leverage_ratio),
                  leverage_disclaimer(lev.leverage_ratio)),
-        kpi_tile("HELOC Drawn", fmt_cad(lev.heloc_drawn_cad),
-                 f"util {fmt_pct(lev.heloc_util_pct)} · limit {fmt_cad(lev.heloc_limit_cad)}"),
     ]
-    cols = st.columns(5)
+    cols = st.columns(4)
     for col, html in zip(cols, tiles):
         col.markdown(html, unsafe_allow_html=True)
 
