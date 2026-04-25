@@ -1,14 +1,16 @@
 # Investments Monitor — TODO
 
 ## Current state (2026-04-24)
-✅ **Phases 1–4 complete.** 
+✅ **Phases 1–5a complete.** 
 
 Dashboard + Holdings + Leverage + Net Worth + Settings (local Streamlit app). Cash tracked as individual holdings (ticker='cash'). Live prices (yfinance) + FX (BOC). Password-protected access. **Daily email summary at 12:30 PM PT** with allocations, top 10 holdings (daily % + daily P/L), and all watchlist favorites.
+
+**Phase 5a** (Design v3 improvements): Dashboard KPI rework (Today's Δ + Biggest mover), Leverage stress test (portfolio drawdown slider), Net Worth redesign (inline editing, privacy legend, slider+input controls).
 
 **Architecture:** Local-only (SQLite on Mac). No cloud, no public view. Privacy-first.
 
 ## Status
-App is production-ready for personal use. Daily email automation running via launchd.
+App is production-ready for personal use. Phase 5a (design improvements) live. Phase 5b (Settings refactor, Holdings column toggle, nav subtitles) deferred. Phase 5c decision gate: continue Streamlit or commit to FastAPI+React v1 re-platform.
 
 ---
 
@@ -72,10 +74,31 @@ App is production-ready for personal use. Daily email automation running via lau
 - [x] Setup guide: EMAIL-SETUP.md (Gmail app password, launchd install, testing, troubleshooting)
 - [x] Daily email live and tested ✅
 
-### Phase 5 — Polish / defer gate
-Decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React?
-- [ ] CSV import for IBKR
-- [ ] FX rate current + link to BOC chart
+### Phase 5a — Design v3 KPI / Leverage / Net Worth improvements ✅ (2026-04-24)
+- [x] Dashboard KPI rework: Add "Today's Δ" (portfolio daily P&L in $) + "Biggest mover" (largest % change today)
+- [x] Leverage: Add portfolio drawdown stress test slider (0–50% market drop scenario)
+- [x] Net Worth: Redesign ledger with ASSETS/LIABILITIES sections (per v3 spec)
+- [x] Net Worth: Inline number inputs for Cash, Property value, Mortgage balance
+- [x] Net Worth: Combined slider + number input for Property and Mortgage (no ceiling limit)
+- [x] Net Worth: Privacy legend badge in panel header when hide-values mode on
+- [x] Net Worth: Save button to persist changes to DB (cash_aggregate, property, mortgage tables)
+
+### Phase 5b — Polish / defer gate (Deferred)
+Deferred pending decision gate: does Streamlit fidelity hold up, or do we re-platform to FastAPI + React v1?
+
+**If pursuing further Streamlit improvements:**
+- [ ] Settings refactor: One "Save changes" button per section (Security, Borrowing, Refresh, FX, Imports, About)
+- [ ] Holdings column visibility toggle ("Columns ▾" button to hide/show optional columns)
+- [ ] Nav screen subtitles (active tab shows one-liner description) — requires custom CSS nav
+
+**If committed to v1 re-platform (FastAPI + React):**
+- [ ] Watchlist screen rebuild in React (with taller sparkbar, gap % color-coding)
+- [ ] Nav bar with subtitles (React component, trivial)
+- [ ] Exact design fidelity (pixel-perfect match to v3 prototype)
+
+**Standing tasks (independent of v1/v0.1 decision):**
+- [ ] CSV import for IBKR (blocked on real Questrade CSV test)
+- [ ] FX rate history + BOC chart link
 - [ ] Snapshot retention policy
 - [ ] Claude Code daily-routine documentation
 
