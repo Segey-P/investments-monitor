@@ -156,24 +156,6 @@ def _pre_auth_summary(conn) -> None:
                 )
             st.markdown("".join(parts), unsafe_allow_html=True)
 
-        st.markdown("---")
-        st.markdown("#### Allocation by Category")
-        alloc = calcs.allocations(hs, fx.rate)["by_category"]
-        if alloc:
-            import plotly.graph_objects as go
-            items = sorted(alloc.items(), key=lambda kv: -kv[1])
-            labels = [item[0] for item in items]
-            values = [item[1] for item in items]
-            fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
-            fig.update_layout(
-                height=250,
-                margin=dict(l=0, r=0, t=0, b=0),
-                showlegend=True,
-            )
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.caption("No allocations yet.")
-
 
 def tick(conn) -> bool:
     """Gate entry-point. Returns True if user is authenticated and not expired.
