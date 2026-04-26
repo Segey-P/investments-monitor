@@ -1,0 +1,110 @@
+{
+  "as_of": "2026-04-26T00:00:14+00:00",
+  "ratios": {
+    "leverage_ratio": 1.08,
+    "heloc_utilization_pct": 0.1,
+    "portfolio_return_ytd_pct": 5.39,
+    "debt_to_equity": 0.2844,
+    "mortgage_ltv": 0.3273
+  },
+  "allocations": {
+    "by_account": {
+      "TFSA": 0.2705,
+      "RRSP": 0.7295
+    },
+    "by_asset_class": {
+      "Stock": 0.2256,
+      "ETF": 0.7335,
+      "LeveragedETF": 0.0408
+    },
+    "by_country": {
+      "CA": 0.22,
+      "US": 0.78
+    },
+    "by_currency": {
+      "CAD": 0.22,
+      "USD": 0.78
+    }
+  },
+  "tickers_held": [
+    "AMZN",
+    "AP.UN",
+    "BITQ",
+    "CDZ",
+    "COPP",
+    "CQQQ",
+    "ETH",
+    "ETHH.B",
+    "FBTC",
+    "FISV",
+    "FXI",
+    "GNOM",
+    "HR.UN",
+    "LULU",
+    "LUV",
+    "MSFT",
+    "NIO",
+    "QTUM",
+    "REI.UN",
+    "SIXG",
+    "SPCE",
+    "TME",
+    "TQQQ",
+    "UCSH.U",
+    "VIOO",
+    "VTI",
+    "XHC",
+    "XIT",
+    "XLI",
+    "XLV"
+  ],
+  "prices": {
+    "AMZN": 263.989990234375,
+    "BITQ": 24.530000686645508,
+    "COPP": 38.779998779296875,
+    "CQQQ": 50.060001373291016,
+    "ETH": 22.040000915527344,
+    "FISV": 60.84000015258789,
+    "FXI": 36.86000061035156,
+    "GNOM": 45.970001220703125,
+    "LULU": 143.8000030517578,
+    "LUV": 39.45000076293945,
+    "MSFT": 424.6199951171875,
+    "NIO": 6.210000038146973,
+    "QTUM": 132.7899932861328,
+    "SIXG": 82.5,
+    "SPCE": 2.5799999237060547,
+    "TME": 9.34000015258789,
+    "TQQQ": 62.560001373291016,
+    "VIOO": 125.95999908447266,
+    "VTI": 352.04998779296875,
+    "XLI": 172.47000122070312,
+    "XLV": 144.17999267578125
+  },
+  "watchlist": [
+    {
+      "ticker": "MSFT",
+      "current": 424.62,
+      "target": 400.0,
+      "gap_pct": 0.0615
+    },
+    {
+      "ticker": "NTR.TO",
+      "current": 97.86,
+      "target": 70.0,
+      "gap_pct": 0.398
+    },
+    {
+      "ticker": "RY.TO",
+      "current": 239.83,
+      "target": 210.0,
+      "gap_pct": 0.142
+    },
+    {
+      "ticker": "SOXL",
+      "current": 128.32,
+      "target": 40.0,
+      "gap_pct": 2.208
+    }
+  ]
+}
