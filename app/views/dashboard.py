@@ -53,7 +53,7 @@ def render(conn) -> None:
         [h for h in holdings_all if h.account_type == "Unreg"], fx.rate
     ).portfolio_cad
     lev = calcs.leverage(conn, port.portfolio_cad, unreg_value)
-    nw = calcs.net_worth(conn, port.portfolio_cad)
+    nw = calcs.net_worth(conn, port.portfolio_cad, port.cash_cad)
 
     fx_sub = (
         f'FX <a href="https://ca.finance.yahoo.com/quote/CAD=X/" '

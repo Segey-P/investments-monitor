@@ -45,12 +45,12 @@ def render(conn) -> None:
     if "nw_cash" not in st.session_state:
         st.session_state.nw_cash = float(cash_row["balance_cad"] or 0)
 
-    nw = calcs.net_worth(conn, port.portfolio_cad)
+    nw = calcs.net_worth(conn, port.portfolio_cad, port.cash_cad)
     heloc_drawn = float(nw.heloc_drawn_cad)
     margin_drawn = float(nw.margin_balance_cad)
 
     total_assets = (
-        port.portfolio_cad
+        (port.portfolio_cad - port.cash_cad)
         + st.session_state.nw_cash
         + st.session_state.nw_prop_val
         + manual_assets_total
@@ -108,14 +108,14 @@ def render(conn) -> None:
         col1, col2 = st.columns([0.7, 0.3])
         col1.markdown(
             f'<div style="padding:6px 14px;">'
-            f'<div style="font-size:12px;color:{PALETTE["text"]};">Portfolio (auto)</div>'
+            f'<div style="font-size:12px;color:{PALETTE["text"]};">Portfolio (excl. cash)</div>'
             f'<div style="font-size:10px;color:{PALETTE["textDim"]};">RRSP+TFSA+Non-Reg+Crypto</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
         col2.markdown(
             f'<div style="padding:6px 14px;text-align:right;font-family:\'DM Mono\',monospace;'
-            f'font-size:13px;color:{PALETTE["text"]};{blur}">{fmt_cad(port.portfolio_cad)}</div>',
+            f'font-size:13px;color:{PALETTE["text"]};{blur}">{fmt_cad(port.portfolio_cad - port.cash_cad)}</div>',
             unsafe_allow_html=True,
         )
 

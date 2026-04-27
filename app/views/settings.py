@@ -11,6 +11,7 @@ import streamlit as st
 from app.db import init_db
 from app.fx import get_usdcad
 from scripts.importers.questrade import QuestradeImporter
+from scripts.importers.ibkr import IBKRImporter
 from scripts.importers.persist import FileAlreadyImported, persist_result
 
 
@@ -50,7 +51,7 @@ def _git_info(repo_root: Path) -> dict[str, str]:
 def _render_import_flow(conn) -> None:
     """3-stage import flow: upload → preview/review → done."""
     ss = st.session_state
-    ss.setdefault("import_flow", {"stage": 0, "path": None, "result": None, "overrides": {}})
+    ss.setdefault("import_flow", {"stage": 0, "path": None, "result": None, "overrides": {}, "broker": "Questrade"})
     flow = ss["import_flow"]
 
     repo_root = Path(__file__).resolve().parent.parent.parent
@@ -59,15 +60,47 @@ def _render_import_flow(conn) -> None:
 
     # Stage 0: Upload
     if flow["stage"] == 0:
-        st.markdown("#### Upload Questrade Investment Summary")
-        uploaded = st.file_uploader("Drop .xlsx file or click to browse", type=["xlsx"])
+        st.markdown("#### Import Holdings")
+        
+        broker = st.radio(
+            "Select Broker",
+            ["Questrade", "Interactive Brokers"],
+            index=0 if flow.get("broker", "Questrade") == "Questrade" else 1,
+            horizontal=True,
+            key="import_broker_select"
+        )
+        flow["broker"] = broker
+
+        if broker == "Questrade":
+            st.info(
+                "**Instructions:**\n"
+                "1. Log in to Questrade.\n"
+                "2. Go to **Reports** > **Investment Summary**.\n"
+                "3. Select accounts and click **Export to Excel**.\n"
+                "4. Upload the **.xlsx** file below."
+            )
+            file_types = ["xlsx"]
+            importer_cls = QuestradeImporter
+        else:
+            st.info(
+                "**Instructions:**\n"
+                "1. Log in to IBKR Portal.\n"
+                "2. Go to **Performance & Reports** > **Statements**.\n"
+                "3. Select **Investment Summary** (preferred) or **Activity Statement**.\n"
+                "4. Select **Format: CSV** and **Period: From Inception**.\n"
+                "5. Upload the **.csv** file below."
+            )
+            file_types = ["csv"]
+            importer_cls = IBKRImporter
+
+        uploaded = st.file_uploader(f"Drop {broker} file here", type=file_types)
 
         if uploaded:
             file_path = import_dir / uploaded.name
             file_path.write_bytes(uploaded.getvalue())
             st.success(f"✓ Saved {uploaded.name}")
 
-            importer = QuestradeImporter()
+            importer = importer_cls()
             if importer.detect_format(file_path):
                 try:
                     parsed = importer.parse(file_path)
@@ -79,13 +112,16 @@ def _render_import_flow(conn) -> None:
                 except Exception as e:
                     st.error(f"Failed to parse file: {e}")
             else:
-                st.warning("File doesn't look like Questrade; continuing anyway...")
-                parsed = importer.parse(file_path)
-                flow["path"] = file_path
-                flow["result"] = parsed
-                flow["overrides"] = {}
-                flow["stage"] = 1
-                st.rerun()
+                st.warning(f"File doesn't look like {broker} format; attempting anyway...")
+                try:
+                    parsed = importer.parse(file_path)
+                    flow["path"] = file_path
+                    flow["result"] = parsed
+                    flow["overrides"] = {}
+                    flow["stage"] = 1
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Parse failed: {e}")
 
         st.markdown("---")
         st.markdown("#### Import History")

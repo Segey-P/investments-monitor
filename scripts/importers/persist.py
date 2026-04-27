@@ -98,20 +98,28 @@ def persist_result(conn, path: Path, result: ParseResult) -> dict:
                 _upsert_holding(acct_ids[num], cash_holding)
                 holdings_count += 1
 
-        total_cash = sum(a.cash_cad for a in result.accounts.values())
+        # Update the aggregate cash balance in the dedicated table.
+        # We sum all 'cash' ticker holdings across all accounts to get the global total.
+        total_global_cash = conn.execute(
+            "SELECT SUM(quantity) FROM holdings WHERE ticker = 'cash'"
+        ).fetchone()[0] or 0.0
+        
         conn.execute(
             "UPDATE cash_aggregate SET balance_cad = ? WHERE id = 1",
-            (total_cash,),
+            (total_global_cash,),
         )
 
+        first_acct = next(iter(result.accounts.values())) if result.accounts else None
+        broker_name = first_acct.broker if first_acct else "Unknown"
         first_acct_id = next(iter(acct_ids.values())) if acct_ids else None
+        
         conn.execute(
             "INSERT INTO imports (filename, broker, account_id, rows) VALUES (?, ?, ?, ?)",
-            (path.name, "Questrade", first_acct_id, holdings_count),
+            (path.name, broker_name, first_acct_id, holdings_count),
         )
 
     return {
         "accounts": len(acct_ids),
         "holdings": holdings_count,
-        "cash_total": total_cash,
+        "cash_total": sum(a.cash_cad for a in result.accounts.values()),
     }

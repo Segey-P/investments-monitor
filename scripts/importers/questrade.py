@@ -53,35 +53,6 @@ def _categorize_holding(ticker: str, asset_class: str) -> str:
     return "Other"
 
 
-# Yahoo doesn't use the same symbol Questrade displays for a few TSX-listed
-# USD-denominated ETFs. Hand-override them here. Add as we find more.
-YAHOO_SYMBOL_OVERRIDES = {
-    "HSUV.U": "HSUV-U.TO",
-    "UCSH.U": "UCSH-U.TO",
-    "ETHH.B": "ETHH-B.TO",
-}
-
-
-def _to_yahoo_ticker(ticker: str, currency: str, description: str) -> str:
-    """Map Questrade display ticker to a Yahoo Finance symbol."""
-    t = (ticker or "").strip()
-    if not t:
-        return t
-    if t in YAHOO_SYMBOL_OVERRIDES:
-        return YAHOO_SYMBOL_OVERRIDES[t]
-    if currency == "USD":
-        return t
-    desc = (description or "").upper()
-    if "CDR" in desc:
-        base = t.split(".")[0]
-        return f"{base}.NE"
-    if t.endswith((".TO", ".V", ".NE", ".CN")):
-        return t
-    # Yahoo uses dash for class/unit suffixes on TSX listings:
-    # AP.UN -> AP-UN.TO, HR.UN -> HR-UN.TO, ETHH.B -> ETHH-B.TO (also in overrides).
-    return f"{t.replace('.', '-')}.TO"
-
-
 class QuestradeImporter(BrokerImporter):
     broker = "Questrade"
 
@@ -133,7 +104,7 @@ class QuestradeImporter(BrokerImporter):
             cps = float(row[px["Cost Per Share"]])
             ac = _refine_asset_class(str(sym), asset_code, desc)
             country = _default_country(str(sym), cur, desc)
-            yahoo = _to_yahoo_ticker(str(sym), cur, desc)
+            yahoo = self.to_yahoo_ticker(str(sym), cur, desc)
             category = _categorize_holding(str(sym), ac)
             result.holdings.append(ParsedHolding(
                 broker_account_number=acct,

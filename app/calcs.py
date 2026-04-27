@@ -87,11 +87,13 @@ class PortfolioSummary:
     position_count: int
     account_count: int
     missing_prices: int
+    cash_cad: float = 0.0
 
 
 def summarize(holdings: list[HoldingRow], usdcad: float) -> PortfolioSummary:
     total = 0.0
     pl = 0.0
+    cash = 0.0
     missing = 0
     for h in holdings:
         mv = h.mkt_value_cad(usdcad)
@@ -99,14 +101,18 @@ def summarize(holdings: list[HoldingRow], usdcad: float) -> PortfolioSummary:
             missing += 1
             continue
         total += mv
-        cost = h.cost_cad(usdcad)
-        pl += mv - cost
+        if h.ticker == "cash":
+            cash += mv
+        else:
+            cost = h.cost_cad(usdcad)
+            pl += mv - cost
     return PortfolioSummary(
         portfolio_cad=total,
         unrealized_pl_cad=pl,
         position_count=len(holdings),
         account_count=len({h.account_id for h in holdings}),
         missing_prices=missing,
+        cash_cad=cash,
     )
 
 
@@ -203,13 +209,13 @@ class NetWorth:
     mortgage_ltv: float
 
 
-def net_worth(conn, portfolio_cad: float) -> NetWorth:
+def net_worth(conn, portfolio_cad: float, portfolio_cash_cad: float = 0.0) -> NetWorth:
     cash = float(conn.execute("SELECT balance_cad FROM cash_aggregate WHERE id=1").fetchone()["balance_cad"] or 0)
     prop = conn.execute("SELECT value_cad FROM property WHERE id=1").fetchone()["value_cad"] or 0
     mort = conn.execute("SELECT balance_cad FROM mortgage WHERE id=1").fetchone()["balance_cad"] or 0
     drawn = heloc_drawn(conn)
     margin_bal = float(conn.execute("SELECT balance_cad FROM margin_account WHERE id=1").fetchone()["balance_cad"] or 0)
-    assets = portfolio_cad + cash + float(prop)
+    assets = (portfolio_cad - portfolio_cash_cad) + cash + float(prop)
     liabs = float(mort) + drawn + margin_bal
     nw = assets - liabs
     dte = (liabs / nw) if nw > 0 else 0.0
