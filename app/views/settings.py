@@ -245,8 +245,12 @@ def _render_import_flow(conn) -> None:
 def render(conn) -> None:
     st.markdown("### Settings")
 
+    # -------------------- Imports --------------------
+    with st.expander("Imports", expanded=True):
+        _render_import_flow(conn)
+
     # -------------------- Security --------------------
-    with st.expander("Security", expanded=True):
+    with st.expander("Security", expanded=False):
         timeout = int(_get_setting(conn, "session_timeout_min", "15") or "15")
         new_timeout = st.number_input(
             "Session timeout (minutes)", min_value=1, max_value=240, value=timeout, step=1,
@@ -293,10 +297,6 @@ def render(conn) -> None:
             f"**Fetched:** {fx.fetched_at}" + ("  — **stale**" if fx.stale else "")
         )
         st.markdown("[BOC chart ↗](https://www.bankofcanada.ca/rates/exchange/currency-converter/)")
-
-    # -------------------- Imports --------------------
-    with st.expander("Imports", expanded=False):
-        _render_import_flow(conn)
 
     # -------------------- About --------------------
     with st.expander("About", expanded=False):

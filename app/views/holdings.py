@@ -75,6 +75,11 @@ def render(conn) -> None:
     if "holdings_original" not in st.session_state:
         st.session_state["holdings_original"] = {r["_id"]: r for r in rows}
 
+    st.caption(
+        "Editable: **Qty**, **ACB/sh**, **Class**, **Category** · "
+        "Read-only: everything else (live feed)"
+    )
+
     edited_df = st.data_editor(
         df,
         hide_index=True,
@@ -88,8 +93,8 @@ def render(conn) -> None:
                 display_text="↗", width="small",
             ),
             "Name":        st.column_config.TextColumn(disabled=True),
-            "Qty":         st.column_config.NumberColumn(format="%.2f", disabled=True),
-            "ACB/sh":      st.column_config.NumberColumn(format="%.2f", disabled=True),
+            "Qty":         st.column_config.NumberColumn(format="%.4f"),
+            "ACB/sh":      st.column_config.NumberColumn(format="%.4f"),
             "Price":       st.column_config.NumberColumn(format="%.2f", disabled=True),
             "Mkt Value":   st.column_config.TextColumn(disabled=True),
             "P/L":         st.column_config.TextColumn(disabled=True),
@@ -127,12 +132,37 @@ def render(conn) -> None:
                     )
                     changes_count += 1
 
+                qty_orig = round(float(orig.get("Qty") or 0), 6)
+                qty_new = round(float(edited_row.get("Qty") or 0), 6)
+                if qty_orig != qty_new and qty_new > 0:
+                    conn.execute(
+                        "UPDATE holdings SET quantity = ? WHERE id = ?",
+                        (qty_new, holding_id),
+                    )
+                    changes_count += 1
+
+                acb_orig = round(float(orig.get("ACB/sh") or 0), 6)
+                acb_new = round(float(edited_row.get("ACB/sh") or 0), 6)
+                if acb_orig != acb_new and acb_new >= 0:
+                    conn.execute(
+                        "UPDATE holdings SET acb_per_share = ? WHERE id = ?",
+                        (acb_new, holding_id),
+                    )
+                    changes_count += 1
+
         if changes_count > 0:
             st.success(f"✓ Saved {changes_count} change(s)")
-            st.session_state["holdings_original"] = {r["_id"]: r for r in edited_df.to_dict(orient="records")}
+            st.session_state.pop("holdings_original", None)
             st.rerun()
         else:
             st.info("No changes to save")
 
-    st.caption(f"1 USD = {fx.rate:.4f} CAD · {fx.as_of}"
-               + (" · stale" if fx.stale else ""))
+    last_fetch = conn.execute(
+        "SELECT MAX(fetched_at) AS ts FROM prices"
+    ).fetchone()["ts"]
+    ts_str = last_fetch[:16].replace("T", " ") + " UTC" if last_fetch else "—"
+    st.caption(
+        f"1 USD = {fx.rate:.4f} CAD · {fx.as_of}"
+        + (" · stale" if fx.stale else "")
+        + f" · Market data: {ts_str}"
+    )

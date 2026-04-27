@@ -113,7 +113,7 @@ def _pre_auth_summary(conn) -> None:
     with col2:
         st.markdown("#### Watchlist Favorites")
         rows = conn.execute("""
-            SELECT w.ticker, w.target_price,
+            SELECT w.ticker, w.target_price, w.notes,
                    p.price AS price, p.prev_close AS prev
             FROM watchlist w
             LEFT JOIN prices p ON p.ticker = w.ticker
@@ -124,35 +124,62 @@ def _pre_auth_summary(conn) -> None:
         if not rows:
             st.caption("No favorites pinned yet.")
         else:
-            parts = []
-            for r in rows:
+            head_cells = []
+            for label, align in [
+                ("Ticker", "left"), ("Notes", "left"), ("Price", "right"),
+                ("Today", "right"), ("vs Target", "right"),
+            ]:
+                head_cells.append(
+                    f'<th style="text-align:{align};padding:5px 8px;font-size:9px;'
+                    f'color:{PALETTE["textDim"]};letter-spacing:0.06em;font-weight:600;'
+                    f'border-bottom:1px solid {PALETTE["border"]};text-transform:uppercase;">'
+                    f'{label}</th>'
+                )
+            body_rows = []
+            for i, r in enumerate(rows):
                 ticker = r["ticker"]
                 price = r["price"]
                 prev = r["prev"]
                 target = r["target_price"]
                 chg_html = fmt_change_pct(price, prev)
-                price_html = f'${price:.2f}' if price is not None else '—'
+                price_html = f'<span class="mono">${price:.2f}</span>' if price is not None else '—'
                 if price is not None and target:
                     gap_pct = (price - target) / target * 100
                     arrow = "▲" if gap_pct >= 0 else "▼"
                     color = PALETTE["green"] if gap_pct >= 0 else PALETTE["amber"]
-                    target_html = (
-                        f'Target <span class="mono">${target:.2f}</span> · '
-                        f'<span style="color:{color};">{arrow} {abs(gap_pct):.1f}% '
-                        f'{"above" if gap_pct >= 0 else "away"}</span>'
+                    gap_html = (
+                        f'<span class="mono" style="color:{color};">'
+                        f'{arrow} {abs(gap_pct):.1f}%</span>'
                     )
                 else:
-                    target_html = '<span style="color:#6b7280;">No target set</span>'
-                parts.append(
-                    f'<div style="padding:8px 0;border-bottom:1px solid {PALETTE["border"]};">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:baseline;">'
-                    f'<span style="font-weight:700;font-size:12px;">{yahoo_link(ticker)}</span>'
-                    f'<span style="display:flex;gap:10px;align-items:baseline;font-size:11px;">'
-                    f'{chg_html}<span class="mono">{price_html}</span></span></div>'
-                    f'<div style="font-size:10px;color:{PALETTE["textDim"]};margin-top:2px;">{target_html}</div>'
-                    f'</div>'
+                    gap_html = f'<span style="color:#6b7280;font-size:10px;">—</span>'
+                notes_html = (
+                    f'<span style="font-size:10px;color:{PALETTE["textDim"]};">'
+                    f'{r["notes"] or ""}</span>'
                 )
-            st.markdown("".join(parts), unsafe_allow_html=True)
+                bg = PALETTE["bgRaised"] if i % 2 else "transparent"
+                body_rows.append(
+                    f'<tr style="background:{bg};">'
+                    f'<td style="padding:6px 8px;font-size:11px;font-weight:700;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">'
+                    f'{yahoo_link(ticker)}</td>'
+                    f'<td style="padding:6px 8px;border-bottom:1px solid {PALETTE["border"]};">'
+                    f'{notes_html}</td>'
+                    f'<td style="padding:6px 8px;text-align:right;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">{price_html}</td>'
+                    f'<td style="padding:6px 8px;text-align:right;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">{chg_html}</td>'
+                    f'<td style="padding:6px 8px;text-align:right;'
+                    f'border-bottom:1px solid {PALETTE["border"]};">{gap_html}</td>'
+                    f'</tr>'
+                )
+            st.markdown(
+                '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+                f'<thead><tr style="background:{PALETTE["bgRaised"]};">'
+                f'{"".join(head_cells)}</tr></thead>'
+                f'<tbody>{"".join(body_rows)}</tbody></table>',
+                unsafe_allow_html=True,
+            )
 
 
 def tick(conn) -> bool:

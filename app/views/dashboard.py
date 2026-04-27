@@ -87,7 +87,7 @@ def render(conn) -> None:
     st.markdown("&nbsp;", unsafe_allow_html=True)
 
     # --- Allocation chart, Watchlist, What-if (3-column layout) ---
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3, gap="large")
 
     with col1:
         st.markdown("#### Allocation")
@@ -108,7 +108,12 @@ def render(conn) -> None:
             st.caption("No allocations yet.")
 
     with col2:
-        st.markdown("#### Watchlist Favorites")
+        st.markdown(
+            f'#### Watchlist Favorites'
+            f'<span style="float:right;font-size:10px;color:{PALETTE["textDim"]};'
+            f'font-weight:normal;padding-top:6px;">→ Watchlist tab</span>',
+            unsafe_allow_html=True,
+        )
         rows = conn.execute("""
             SELECT w.ticker, w.target_price,
                    p.price AS price, p.prev_close AS prev
@@ -187,11 +192,22 @@ def render(conn) -> None:
     st.markdown("&nbsp;", unsafe_allow_html=True)
 
     # --- Top holdings (15) ---
-    _top_holdings_table(holdings, port.portfolio_cad, fx.rate)
+    last_fetch = conn.execute(
+        "SELECT MAX(fetched_at) AS ts FROM prices"
+    ).fetchone()["ts"]
+    _top_holdings_table(holdings, port.portfolio_cad, fx.rate, last_fetch)
 
 
-def _top_holdings_table(holdings, portfolio_cad: float, usdcad: float) -> None:
-    st.markdown("#### Top 15 Holdings")
+def _top_holdings_table(holdings, portfolio_cad: float, usdcad: float, last_fetch: str | None = None) -> None:
+    col_h, col_ts = st.columns([3, 1])
+    col_h.markdown("#### Top 15 Holdings")
+    if last_fetch:
+        col_ts.markdown(
+            f'<div style="text-align:right;padding-top:6px;font-size:10px;'
+            f'color:#6b7280;">Market data: {last_fetch[:16].replace("T", " ")} UTC'
+            f'<br><span style="font-size:9px;">→ Holdings tab for full list</span></div>',
+            unsafe_allow_html=True,
+        )
     ranked = []
     for h in holdings:
         mv = h.mkt_value_cad(usdcad)
