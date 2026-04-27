@@ -2,8 +2,6 @@
 
 ## Next up
 
-- [ ] IBKR CSV import (Interactive Brokers) — do tomorrow
-
 ## Phase 5b — Streamlit polish
 
 - [ ] Settings: one "Save changes" button per section
