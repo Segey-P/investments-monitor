@@ -24,7 +24,7 @@ def _load_rows(conn) -> list[dict]:
         out.append({
             "Ticker": r["ticker"],
             "Yahoo": f"https://finance.yahoo.com/quote/{r['ticker']}",
-            "Category": r["notes"] or "",
+            "Notes": r["notes"] or "",
             "Current": current,
             "Target": target or 0.0,
             "Gap %": gap,
@@ -46,7 +46,7 @@ def render(conn) -> None:
                               placeholder="e.g. LITE or POET.TO")
         new_target = c2.number_input("Target price", min_value=0.0, value=0.0,
                                      step=0.01, format="%.2f", key="wl_new_target")
-        new_notes = c3.text_input("Category / notes", key="wl_new_notes",
+        new_notes = c3.text_input("Notes", key="wl_new_notes",
                                   placeholder="long-term / dividend / …")
         if c4.button("Add", key="wl_add"):
             if new_t.strip():
@@ -90,14 +90,14 @@ def render(conn) -> None:
         hide_index=True,
         width="stretch",
         use_container_width=True,
-        column_order=["Ticker", "Yahoo", "Category", "Current", "Target", "Gap %", "Cur", "★ Fav"],
+        column_order=["Ticker", "Yahoo", "Notes", "Current", "Target", "Gap %", "Cur", "★ Fav"],
         column_config={
             "Ticker":   st.column_config.TextColumn(disabled=True),
             "Yahoo":    st.column_config.LinkColumn(
                             "↗", help="Open on Yahoo Finance",
                             display_text="↗", width="small",
                         ),
-            "Category": st.column_config.TextColumn(),
+            "Notes":    st.column_config.TextColumn(),
             "Current":  st.column_config.NumberColumn(format="%.2f", disabled=True),
             "Target":   st.column_config.NumberColumn(format="%.2f"),
             "Gap %":    st.column_config.NumberColumn(format="%.2f%%", disabled=True),
@@ -108,7 +108,7 @@ def render(conn) -> None:
     )
     st.caption(
         "Gap % = (current − target) / target. Positive = price **above** target; "
-        "negative = **below**. Edit Target, Category, or ★ Fav, then click Save."
+        "negative = **below**. Edit Notes, Target, or ★ Fav, then click Save."
     )
 
     # Save button and logic
@@ -132,10 +132,10 @@ def render(conn) -> None:
                     st.rerun()
                     return
 
-                if orig.get("Category") != edited_row["Category"]:
+                if orig.get("Notes") != edited_row["Notes"]:
                     conn.execute(
                         "UPDATE watchlist SET notes = ? WHERE ticker = ?",
-                        (edited_row["Category"] or None, ticker),
+                        (edited_row["Notes"] or None, ticker),
                     )
                     changes_count += 1
 
