@@ -101,6 +101,8 @@ class IBKRImporter(BrokerImporter):
                         asset_class = "ETF"
                         if symbol.upper() in LEVERAGED_ETF_TICKERS:
                             asset_class = "LeveragedETF"
+                    elif fin_instrument == "Options":
+                        asset_class = "Options"
                     
                     category = "Other"
                     if symbol.upper() in CASH_TICKERS:
