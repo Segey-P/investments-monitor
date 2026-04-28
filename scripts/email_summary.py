@@ -46,7 +46,6 @@ def generate_email_html(conn) -> str:
         logger.warning(f"Price fetch failed: {e}. Using cached prices.")
 
     # Computations
-    allocs = calcs.allocations(holdings_all, fx.rate)
     port = calcs.summarize(holdings_all, fx.rate)
     unreg_value = calcs.summarize(
         [h for h in holdings_all if h.account_type == "Unreg"], fx.rate
@@ -54,27 +53,19 @@ def generate_email_html(conn) -> str:
     lev = calcs.leverage(conn, port.portfolio_cad, unreg_value)
     nw = calcs.net_worth(conn, port.portfolio_cad)
 
-    # Top holdings (by market value) with daily change
-    top_holdings = []
-    for h in sorted(holdings_all, key=lambda x: x.mkt_value_cad(fx.rate) or 0, reverse=True)[:10]:
-        mv = h.mkt_value_cad(fx.rate)
-        if mv is None:
+    # Biggest movers (by % price change, excluding cash)
+    biggest_movers = []
+    for h in holdings_all:
+        if h.ticker == "cash" or not h.price_native or not h.prev_close_native or h.prev_close_native == 0:
             continue
-        # Daily change
-        if h.price_native and h.prev_close_native and h.prev_close_native > 0:
-            daily_pct = (h.price_native / h.prev_close_native - 1.0) * 100
-            daily_pl = (h.price_native - h.prev_close_native) * h.quantity
-            if h.currency == "USD":
-                daily_pl *= fx.rate
-        else:
-            daily_pct = 0
-            daily_pl = 0
-
-        top_holdings.append({
+        daily_pct = (h.price_native / h.prev_close_native - 1.0) * 100
+        biggest_movers.append({
             "ticker": h.ticker,
+            "price": h.price_native,
             "daily_pct": daily_pct,
-            "daily_pl": daily_pl,
         })
+
+    biggest_movers = sorted(biggest_movers, key=lambda x: abs(x["daily_pct"]), reverse=True)[:5]
 
     # Watchlist (all favorites)
     watchlist_rows = conn.execute(
@@ -105,9 +96,6 @@ def generate_email_html(conn) -> str:
             .value {{ font-family: "SF Mono", Monaco, monospace; text-align: right; }}
             .positive {{ color: #22c55e; }}
             .negative {{ color: #ef4444; }}
-            .allocation-bar {{ display: flex; align-items: center; gap: 8px; margin: 8px 0; }}
-            .bar {{ height: 6px; border-radius: 3px; background: #3b82f6; flex: 1; }}
-            .bar-label {{ font-size: 12px; color: #666; min-width: 60px; text-align: right; }}
         </style>
     </head>
     <body>
@@ -115,27 +103,17 @@ def generate_email_html(conn) -> str:
             <h1>Portfolio Summary</h1>
             <div class="timestamp">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M PT')}</div>
 
-            <h2>Allocations</h2>
-            <div>
-                <strong>By Asset Class</strong>
-                {_allocation_html(allocs['by_asset_class'])}
-            </div>
-            <div style="margin-top: 16px;">
-                <strong>By Account</strong>
-                {_allocation_html(allocs['by_account'])}
-            </div>
-
-            <h2>Top 10 Holdings</h2>
+            <h2>Biggest Movers</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Ticker</th>
-                        <th class="value">Daily %</th>
+                        <th class="value">Price</th>
                         <th class="value">Daily Change</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {_top_holdings_html(top_holdings)}
+                    {_biggest_movers_html(biggest_movers)}
                 </tbody>
             </table>
 
@@ -165,33 +143,20 @@ def generate_email_html(conn) -> str:
     return html
 
 
-def _allocation_html(alloc_dict: dict[str, float]) -> str:
-    """Generate allocation bars HTML."""
-    if not alloc_dict:
-        return "<p style='color: #999;'>No data</p>"
+def _biggest_movers_html(movers: list[dict]) -> str:
+    """Generate biggest movers table rows."""
+    if not movers:
+        return "<tr><td colspan='3' style='text-align: center; color: #999;'>No data</td></tr>"
 
     html = ""
-    for name, pct in sorted(alloc_dict.items(), key=lambda x: -x[1]):
-        html += f"""
-        <div class="allocation-bar">
-            <div class="bar" style="width: {pct*100}%;"></div>
-            <div class="bar-label">{name}: {pct*100:.1f}%</div>
-        </div>
-        """
-    return html
-
-
-def _top_holdings_html(holdings: list[dict]) -> str:
-    """Generate top holdings table rows."""
-    html = ""
-    for h in holdings:
-        daily_color = "positive" if h["daily_pl"] >= 0 else "negative"
-        arrow = "▲" if h["daily_pl"] >= 0 else "▼"
+    for m in movers:
+        daily_color = "positive" if m["daily_pct"] >= 0 else "negative"
+        arrow = "▲" if m["daily_pct"] >= 0 else "▼"
         html += f"""
         <tr>
-            <td class="ticker">{h['ticker']}</td>
-            <td class="value">{h['daily_pct']:+.2f}%</td>
-            <td class="value {daily_color}">{arrow} {fmt_cad(h['daily_pl'])}</td>
+            <td class="ticker">{m['ticker']}</td>
+            <td class="value">${m['price']:.2f}</td>
+            <td class="value {daily_color}">{arrow} {abs(m['daily_pct']):+.2f}%</td>
         </tr>
         """
     return html
