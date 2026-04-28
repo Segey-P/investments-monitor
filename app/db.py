@@ -28,10 +28,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
         conn.rollback()
     except sqlite3.IntegrityError:
         # Constraint doesn't allow 'Options' yet, need to migrate
-        conn.execute("BEGIN")
         try:
             conn.execute("ALTER TABLE holdings RENAME TO holdings_old")
-            conn.executescript("""
+            conn.execute("""
                 CREATE TABLE holdings (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -46,10 +45,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
                   description TEXT,
                   as_of TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                   UNIQUE (account_id, ticker, currency)
-                );
-                INSERT INTO holdings SELECT * FROM holdings_old;
-                DROP TABLE holdings_old;
+                )
             """)
+            conn.execute("INSERT INTO holdings SELECT * FROM holdings_old")
+            conn.execute("DROP TABLE holdings_old")
             conn.commit()
         except Exception:
             conn.rollback()
