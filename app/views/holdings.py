@@ -41,9 +41,9 @@ def render(conn) -> None:
         cost_cad = h.cost_cad(fx.rate)
         pl = None if mv_cad is None else mv_cad - cost_cad
         pl_pct = None if (h.price_native is None or h.acb_per_share == 0) else (h.price_native / h.acb_per_share) - 1
-        day_delta_native = h.quantity * (h.price_native - h.prev_close) if (h.price_native is not None and h.prev_close is not None) else None
+        day_delta_native = h.quantity * (h.price_native - h.prev_close_native) if (h.price_native is not None and h.prev_close_native is not None) else None
         day_delta_cad = day_delta_native * (fx.rate if h.currency == "USD" else 1) if day_delta_native is not None else None
-        day_delta_pct = ((h.price_native - h.prev_close) / h.prev_close) if (h.prev_close and h.prev_close != 0) else None
+        day_delta_pct = ((h.price_native - h.prev_close_native) / h.prev_close_native) if (h.prev_close_native and h.prev_close_native != 0) else None
         holdings_data.append((h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct))
 
     holdings_data.sort(key=lambda x: x[1] if x[1] is not None else 0, reverse=True)
