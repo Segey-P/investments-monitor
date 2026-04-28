@@ -118,10 +118,10 @@ def render(conn) -> None:
             "Name":        st.column_config.TextColumn(disabled=True),
             "Qty":         st.column_config.NumberColumn(format="%d"),
             "Price":       st.column_config.NumberColumn(format="$%.2f", disabled=True),
-            "ACB":         st.column_config.NumberColumn(format="$%,.2f"),
+            "ACB":         st.column_config.NumberColumn(format="$,.2f"),
             "Today":       st.column_config.NumberColumn(format="$%.2f", disabled=True),
             "Today %":     st.column_config.NumberColumn(format="%.2f%%", disabled=True),
-            "Mkt Value":   st.column_config.NumberColumn(format="$%,.2f", disabled=True),
+            "Mkt Value":   st.column_config.NumberColumn(format="$,.2f", disabled=True),
             "P/L":         st.column_config.NumberColumn(format="$%.2f", disabled=True),
             "P/L %":       st.column_config.NumberColumn(format="%.2f%%", disabled=True),
             "Class":       st.column_config.SelectboxColumn(
