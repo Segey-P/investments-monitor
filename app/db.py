@@ -22,6 +22,39 @@ def _migrate(conn: sqlite3.Connection) -> None:
         )
         conn.commit()
 
+    # Add 'Options' to asset_class CHECK constraint
+    try:
+        conn.execute("INSERT INTO holdings (account_id, ticker, yahoo_ticker, currency, quantity, acb_per_share, asset_class, country) VALUES (NULL, '', '', '', 0, 0, 'Options', 'CA')")
+        conn.rollback()
+    except sqlite3.IntegrityError:
+        # Constraint doesn't allow 'Options' yet, need to migrate
+        conn.execute("BEGIN")
+        try:
+            conn.execute("ALTER TABLE holdings RENAME TO holdings_old")
+            conn.executescript("""
+                CREATE TABLE holdings (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                  ticker TEXT NOT NULL,
+                  yahoo_ticker TEXT NOT NULL,
+                  currency TEXT NOT NULL CHECK (currency IN ('CAD','USD')),
+                  quantity REAL NOT NULL,
+                  acb_per_share REAL NOT NULL,
+                  asset_class TEXT NOT NULL CHECK (asset_class IN ('Cash','Stock','ETF','LeveragedETF','Crypto','Options')),
+                  country TEXT NOT NULL CHECK (country IN ('CA','US','Other')),
+                  category TEXT NOT NULL DEFAULT 'Other' CHECK (category IN ('Cash','Dividend','Growth','Other')),
+                  description TEXT,
+                  as_of TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  UNIQUE (account_id, ticker, currency)
+                );
+                INSERT INTO holdings SELECT * FROM holdings_old;
+                DROP TABLE holdings_old;
+            """)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
 
 def init_db(path: Path = DB_PATH) -> sqlite3.Connection:
     conn = get_conn(path)
