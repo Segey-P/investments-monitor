@@ -47,7 +47,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
                   UNIQUE (account_id, ticker, currency)
                 )
             """)
-            conn.execute("INSERT INTO holdings SELECT * FROM holdings_old")
+            conn.execute("""
+                INSERT INTO holdings
+                SELECT id, account_id, ticker, yahoo_ticker, currency, quantity, acb_per_share,
+                       asset_class, country,
+                       CASE WHEN category IN ('Cash','Dividend','Growth','Other') THEN category ELSE 'Other' END,
+                       description, as_of
+                FROM holdings_old
+            """)
             conn.execute("DROP TABLE holdings_old")
             conn.commit()
         except Exception:
