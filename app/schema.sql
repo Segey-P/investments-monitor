@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS holdings (
   currency TEXT NOT NULL CHECK (currency IN ('CAD','USD')),
   quantity REAL NOT NULL,
   acb_per_share REAL NOT NULL,
-  asset_class TEXT NOT NULL CHECK (asset_class IN ('Cash','Stock','ETF','LeveragedETF','Crypto')),
+  asset_class TEXT NOT NULL CHECK (asset_class IN ('Cash','Stock','ETF','LeveragedETF','Crypto','Options')),
   country TEXT NOT NULL CHECK (country IN ('CA','US','Other')),
   category TEXT NOT NULL DEFAULT 'Other' CHECK (category IN ('Cash','Dividend','Growth','Other')),
   description TEXT,
