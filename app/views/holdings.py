@@ -34,6 +34,11 @@ def render(conn) -> None:
 
     port = calcs.summarize(filtered, fx.rate)
 
+    # Fetch prev_close from prices table for accurate Today % calculation
+    prices_map = {}
+    for row in conn.execute("SELECT ticker, price, prev_close FROM prices").fetchall():
+        prices_map[row["ticker"]] = {"price": row["price"], "prev_close": row["prev_close"]}
+
     rows = []
     holdings_data = []
     for h in filtered:
@@ -41,21 +46,34 @@ def render(conn) -> None:
         cost_cad = h.cost_cad(fx.rate)
         pl = None if mv_cad is None else mv_cad - cost_cad
         pl_pct = None if (h.price_native is None or h.acb_per_share == 0) else (h.price_native / h.acb_per_share) - 1
-        day_delta_native = h.quantity * (h.price_native - h.prev_close_native) if (h.price_native is not None and h.prev_close_native is not None) else None
-        day_delta_cad = day_delta_native * (fx.rate if h.currency == "USD" else 1) if day_delta_native is not None else None
-        day_delta_pct = ((h.price_native - h.prev_close_native) / h.prev_close_native) if (h.prev_close_native and h.prev_close_native != 0) else None
-        holdings_data.append((h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct))
+
+        # Today's change from prices table
+        price_data = prices_map.get(h.ticker)
+        day_delta_native = None
+        day_delta_cad = None
+        day_delta_pct = None
+
+        if price_data and price_data["prev_close"]:
+            prev = price_data["prev_close"]
+            curr = price_data["price"]
+            if curr is not None:
+                day_delta_native = h.quantity * (curr - prev)
+                day_delta_cad = day_delta_native * (fx.rate if h.currency == "USD" else 1)
+                day_delta_pct = ((curr - prev) / prev) * 100 if prev != 0 else None
+
+        total_acb = h.quantity * h.acb_per_share
+        holdings_data.append((h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct, total_acb))
 
     holdings_data.sort(key=lambda x: x[1] if x[1] is not None else 0, reverse=True)
 
-    for h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct in holdings_data:
+    for h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct, total_acb in holdings_data:
         rows.append({
             "Ticker":     h.ticker,
             "Ticker Link": f"https://finance.yahoo.com/quote/{h.yahoo_ticker}",
             "Name":       h.description or "—",
             "Curr":       h.currency,
             "Qty":        int(h.quantity) if h.quantity == int(h.quantity) else h.quantity,
-            "ACB/sh":     h.acb_per_share,
+            "ACB":        total_acb,
             "Price":      h.price_native if h.price_native is not None else None,
             "Today":      day_delta_cad,
             "Today %":    day_delta_pct,
@@ -81,7 +99,7 @@ def render(conn) -> None:
         st.session_state["holdings_original"] = {r["_id"]: r for r in rows}
 
     st.caption(
-        "Editable: **Qty**, **ACB/sh**, **Class**, **Category** · "
+        "Editable: **Qty**, **ACB**, **Class**, **Category** · "
         "Read-only: everything else (live feed)"
     )
 
@@ -90,7 +108,7 @@ def render(conn) -> None:
         hide_index=True,
         width="stretch",
         use_container_width=True,
-        column_order=["Ticker", "Ticker Link", "Name", "Curr", "Qty", "ACB/sh", "Price", "Today", "Today %", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
+        column_order=["Ticker", "Ticker Link", "Name", "Curr", "Qty", "Price", "ACB", "Today", "Today %", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
         column_config={
             "Ticker":      st.column_config.TextColumn(disabled=True),
             "Ticker Link": st.column_config.LinkColumn(
@@ -99,11 +117,11 @@ def render(conn) -> None:
             ),
             "Name":        st.column_config.TextColumn(disabled=True),
             "Qty":         st.column_config.NumberColumn(format="%d"),
-            "ACB/sh":      st.column_config.NumberColumn(format="$%.2f"),
             "Price":       st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            "ACB":         st.column_config.NumberColumn(format="$%,.2f"),
             "Today":       st.column_config.NumberColumn(format="$%.2f", disabled=True),
             "Today %":     st.column_config.NumberColumn(format="%.2f%%", disabled=True),
-            "Mkt Value":   st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            "Mkt Value":   st.column_config.NumberColumn(format="$%,.2f", disabled=True),
             "P/L":         st.column_config.NumberColumn(format="$%.2f", disabled=True),
             "P/L %":       st.column_config.NumberColumn(format="%.2f%%", disabled=True),
             "Class":       st.column_config.SelectboxColumn(
@@ -148,12 +166,13 @@ def render(conn) -> None:
                     )
                     changes_count += 1
 
-                acb_orig = round(float(orig.get("ACB/sh") or 0), 6)
-                acb_new = round(float(orig_row.get("ACB/sh") or 0), 6)
-                if acb_orig != acb_new and acb_new >= 0:
+                acb_total_orig = round(float(orig.get("ACB") or 0), 2)
+                acb_total_new = round(float(orig_row.get("ACB") or 0), 2)
+                if acb_total_orig != acb_total_new and acb_total_new >= 0:
+                    acb_per_share_new = acb_total_new / qty_new if qty_new > 0 else 0
                     conn.execute(
                         "UPDATE holdings SET acb_per_share = ? WHERE id = ?",
-                        (acb_new, holding_id),
+                        (acb_per_share_new, holding_id),
                     )
                     changes_count += 1
 
