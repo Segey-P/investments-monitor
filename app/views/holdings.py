@@ -41,22 +41,27 @@ def render(conn) -> None:
         cost_cad = h.cost_cad(fx.rate)
         pl = None if mv_cad is None else mv_cad - cost_cad
         pl_pct = None if (h.price_native is None or h.acb_per_share == 0) else (h.price_native / h.acb_per_share) - 1
-        holdings_data.append((h, mv_cad, pl, pl_pct))
+        day_delta_native = h.quantity * (h.price_native - h.prev_close) if (h.price_native is not None and h.prev_close is not None) else None
+        day_delta_cad = day_delta_native * (fx.rate if h.currency == "USD" else 1) if day_delta_native is not None else None
+        day_delta_pct = ((h.price_native - h.prev_close) / h.prev_close) if (h.prev_close and h.prev_close != 0) else None
+        holdings_data.append((h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct))
 
     holdings_data.sort(key=lambda x: x[1] if x[1] is not None else 0, reverse=True)
 
-    for h, mv_cad, pl, pl_pct in holdings_data:
+    for h, mv_cad, pl, pl_pct, day_delta_cad, day_delta_pct in holdings_data:
         rows.append({
             "Ticker":     h.ticker,
             "Ticker Link": f"https://finance.yahoo.com/quote/{h.yahoo_ticker}",
             "Name":       h.description or "—",
             "Curr":       h.currency,
-            "Qty":        h.quantity,
+            "Qty":        int(h.quantity) if h.quantity == int(h.quantity) else h.quantity,
             "ACB/sh":     h.acb_per_share,
             "Price":      h.price_native if h.price_native is not None else None,
-            "Mkt Value":  fmt_cad(mv_cad) if mv_cad is not None else "—",
-            "P/L":        fmt_cad(pl) if pl is not None else "—",
-            "P/L %":      fmt_pct(pl_pct) if pl_pct is not None else "—",
+            "Today":      day_delta_cad,
+            "Today %":    day_delta_pct,
+            "Mkt Value":  mv_cad,
+            "P/L":        pl,
+            "P/L %":      pl_pct,
             "Class":      h.asset_class,
             "Category":   h.category,
             "_id":        h.id,
@@ -85,7 +90,7 @@ def render(conn) -> None:
         hide_index=True,
         width="stretch",
         use_container_width=True,
-        column_order=["Ticker", "Ticker Link", "Name", "Curr", "Qty", "ACB/sh", "Price", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
+        column_order=["Ticker", "Ticker Link", "Name", "Curr", "Qty", "ACB/sh", "Price", "Today", "Today %", "Mkt Value", "P/L", "P/L %", "Class", "Category"],
         column_config={
             "Ticker":      st.column_config.TextColumn(disabled=True),
             "Ticker Link": st.column_config.LinkColumn(
@@ -93,14 +98,16 @@ def render(conn) -> None:
                 display_text="↗", width="small",
             ),
             "Name":        st.column_config.TextColumn(disabled=True),
-            "Qty":         st.column_config.NumberColumn(format="%.4f"),
-            "ACB/sh":      st.column_config.NumberColumn(format="%.4f"),
-            "Price":       st.column_config.NumberColumn(format="%.2f", disabled=True),
-            "Mkt Value":   st.column_config.TextColumn(disabled=True),
-            "P/L":         st.column_config.TextColumn(disabled=True),
-            "P/L %":       st.column_config.TextColumn(disabled=True),
+            "Qty":         st.column_config.NumberColumn(format="%d"),
+            "ACB/sh":      st.column_config.NumberColumn(format="$%.2f"),
+            "Price":       st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            "Today":       st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            "Today %":     st.column_config.NumberColumn(format="%.2f%%", disabled=True),
+            "Mkt Value":   st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            "P/L":         st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            "P/L %":       st.column_config.NumberColumn(format="%.2f%%", disabled=True),
             "Class":       st.column_config.SelectboxColumn(
-                options=["Cash", "Stock", "ETF", "LeveragedETF", "Crypto"],
+                options=["Cash", "Stock", "ETF", "LeveragedETF", "Crypto", "Options"],
             ),
             "Curr":        st.column_config.TextColumn(disabled=True),
             "Category":    st.column_config.SelectboxColumn(
@@ -114,26 +121,26 @@ def render(conn) -> None:
     if st.button("💾 Save Changes", key="holdings_save"):
         changes_count = 0
         with conn:
-            for edited_row in edited_df.to_dict(orient="records"):
-                holding_id = int(edited_row["_id"])
+            for orig_row in df.to_dict(orient="records"):
+                holding_id = int(orig_row["_id"])
                 orig = st.session_state["holdings_original"].get(holding_id, {})
 
-                if orig.get("Category") != edited_row["Category"]:
+                if orig.get("Category") != orig_row["Category"]:
                     conn.execute(
                         "UPDATE holdings SET category = ? WHERE id = ?",
-                        (edited_row["Category"], holding_id),
+                        (orig_row["Category"], holding_id),
                     )
                     changes_count += 1
 
-                if orig.get("Class") != edited_row["Class"]:
+                if orig.get("Class") != orig_row["Class"]:
                     conn.execute(
                         "UPDATE holdings SET asset_class = ? WHERE id = ?",
-                        (edited_row["Class"], holding_id),
+                        (orig_row["Class"], holding_id),
                     )
                     changes_count += 1
 
                 qty_orig = round(float(orig.get("Qty") or 0), 6)
-                qty_new = round(float(edited_row.get("Qty") or 0), 6)
+                qty_new = round(float(orig_row.get("Qty") or 0), 6)
                 if qty_orig != qty_new and qty_new > 0:
                     conn.execute(
                         "UPDATE holdings SET quantity = ? WHERE id = ?",
@@ -142,7 +149,7 @@ def render(conn) -> None:
                     changes_count += 1
 
                 acb_orig = round(float(orig.get("ACB/sh") or 0), 6)
-                acb_new = round(float(edited_row.get("ACB/sh") or 0), 6)
+                acb_new = round(float(orig_row.get("ACB/sh") or 0), 6)
                 if acb_orig != acb_new and acb_new >= 0:
                     conn.execute(
                         "UPDATE holdings SET acb_per_share = ? WHERE id = ?",
