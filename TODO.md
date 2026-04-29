@@ -1,6 +1,14 @@
 # Investments Monitor — TODO
 
-## Next up
-- [ ] Settings: one "Save changes" button per section
-- [ ] More email customization (frequency, recipients, format)
-- [ ] Sector concentration analytics
+## Priority 1 — Phase 1 Completion
+
+- [ ] Settings: consolidate to one "Save changes" button per section
+- [ ] Email customization: frequency, recipients, format options
+- [ ] Sector concentration analytics dashboard
+
+## Parked — Phase 2+
+
+- [ ] Multi-account portfolio aggregation
+- [ ] Margin call alerts & risk analysis
+- [ ] Tax loss harvesting recommendations
+- [ ] Integration with Questrade API (when API access available)
