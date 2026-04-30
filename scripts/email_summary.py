@@ -38,7 +38,7 @@ def generate_email_html(conn) -> str:
     # Fetch live prices
     logger.info("Fetching live prices...")
     try:
-        tickers = sorted({h.yahoo_ticker for h in holdings_all if h.ticker != "cash"})
+        tickers = sorted({h.yahoo_ticker for h in holdings_all if h.ticker != "cash" and h.asset_class != "Options"})
         quotes = prices.get_quotes(tickers)
         prices.persist_quotes(conn, quotes)
         holdings_all = calcs.load_holdings(conn)
