@@ -53,23 +53,20 @@ def generate_email_html(conn) -> str:
     lev = calcs.leverage(conn, port.portfolio_cad, unreg_value)
     nw = calcs.net_worth(conn, port.portfolio_cad)
 
-    # Biggest movers (by % price change, excluding cash)
-    biggest_movers = []
+    # Build movers list (by % price change, excluding cash)
+    movers = []
     for h in holdings_all:
         if h.ticker == "cash" or not h.price_native or not h.prev_close_native or h.prev_close_native == 0:
             continue
         daily_pct = (h.price_native / h.prev_close_native - 1.0) * 100
-        biggest_movers.append({
-            "ticker": h.ticker,
-            "price": h.price_native,
-            "daily_pct": daily_pct,
-        })
+        movers.append({"ticker": h.ticker, "price": h.price_native, "daily_pct": daily_pct})
 
-    biggest_movers = sorted(biggest_movers, key=lambda x: abs(x["daily_pct"]), reverse=True)[:5]
+    top_gainers = sorted([m for m in movers if m["daily_pct"] > 0], key=lambda x: x["daily_pct"], reverse=True)[:5]
+    top_losers = sorted([m for m in movers if m["daily_pct"] < 0], key=lambda x: x["daily_pct"])[:5]
 
-    # Watchlist (all favorites)
+    # Watchlist (all favorites, with daily move)
     watchlist_rows = conn.execute(
-        """SELECT w.ticker, p.price, w.target_price
+        """SELECT w.ticker, p.price, p.prev_close, w.target_price
            FROM watchlist w
            LEFT JOIN prices p ON p.ticker = w.ticker
            WHERE w.is_favorite = 1
@@ -103,7 +100,7 @@ def generate_email_html(conn) -> str:
             <h1>Portfolio Summary</h1>
             <div class="timestamp">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M PT')}</div>
 
-            <h2>Biggest Movers</h2>
+            <h2>Top 5 Gainers</h2>
             <table>
                 <thead>
                     <tr>
@@ -113,7 +110,21 @@ def generate_email_html(conn) -> str:
                     </tr>
                 </thead>
                 <tbody>
-                    {_biggest_movers_html(biggest_movers)}
+                    {_movers_html(top_gainers, "No gainers today")}
+                </tbody>
+            </table>
+
+            <h2>Top 5 Losers</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th class="value">Price</th>
+                        <th class="value">Daily Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {_movers_html(top_losers, "No losers today")}
                 </tbody>
             </table>
 
@@ -123,8 +134,9 @@ def generate_email_html(conn) -> str:
                     <tr>
                         <th>Ticker</th>
                         <th class="value">Current</th>
+                        <th class="value">Daily Move</th>
                         <th class="value">Target</th>
-                        <th class="value">Gap</th>
+                        <th class="value">Gap to Target</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -143,48 +155,65 @@ def generate_email_html(conn) -> str:
     return html
 
 
-def _biggest_movers_html(movers: list[dict]) -> str:
-    """Generate biggest movers table rows."""
+def _movers_html(movers: list[dict], empty_msg: str) -> str:
     if not movers:
-        return "<tr><td colspan='3' style='text-align: center; color: #999;'>No data</td></tr>"
+        return f"<tr><td colspan='3' style='text-align: center; color: #999;'>{empty_msg}</td></tr>"
 
     html = ""
     for m in movers:
-        daily_color = "positive" if m["daily_pct"] >= 0 else "negative"
+        css = "positive" if m["daily_pct"] >= 0 else "negative"
         arrow = "▲" if m["daily_pct"] >= 0 else "▼"
         html += f"""
         <tr>
             <td class="ticker">{m['ticker']}</td>
             <td class="value">${m['price']:.2f}</td>
-            <td class="value {daily_color}">{arrow} {abs(m['daily_pct']):+.2f}%</td>
+            <td class="value {css}">{arrow} {m['daily_pct']:+.2f}%</td>
         </tr>
         """
     return html
 
 
 def _watchlist_html(rows: list) -> str:
-    """Generate watchlist table rows."""
     if not rows:
-        return "<tr><td colspan='4' style='text-align: center; color: #999;'>No favorites</td></tr>"
+        return "<tr><td colspan='5' style='text-align: center; color: #999;'>No favorites</td></tr>"
 
     html = ""
     for r in rows:
         ticker = r["ticker"]
         current = r["price"]
+        prev_close = r["prev_close"]
         target = r["target_price"]
-        if current and target:
-            gap_pct = (current - target) / target * 100
-            gap_color = "positive" if gap_pct >= 0 else "negative"
-            arrow = "▲" if gap_pct >= 0 else "▼"
-            html += f"""
-            <tr>
-                <td class="ticker">{ticker}</td>
-                <td class="value">${current:.2f}</td>
-                <td class="value">${target:.2f}</td>
-                <td class="value {gap_color}">{arrow} {abs(gap_pct):.1f}%</td>
-            </tr>
-            """
-    return html or "<tr><td colspan='4' style='text-align: center; color: #999;'>No favorites</td></tr>"
+
+        price_cell = f"${current:.2f}" if current else "—"
+
+        if current and prev_close and prev_close != 0:
+            daily_pct = (current / prev_close - 1.0) * 100
+            daily_css = "positive" if daily_pct >= 0 else "negative"
+            daily_arrow = "▲" if daily_pct >= 0 else "▼"
+            daily_cell = f'<span class="{daily_css}">{daily_arrow} {daily_pct:+.2f}%</span>'
+        else:
+            daily_cell = "—"
+
+        if current and target and target != 0:
+            gap_pct = (current / target - 1.0) * 100
+            gap_css = "positive" if gap_pct >= 0 else "negative"
+            gap_arrow = "▲" if gap_pct >= 0 else "▼"
+            target_cell = f"${target:.2f}"
+            gap_cell = f'<span class="{gap_css}">{gap_arrow} {gap_pct:+.2f}%</span>'
+        else:
+            target_cell = f"${target:.2f}" if target else "—"
+            gap_cell = "—"
+
+        html += f"""
+        <tr>
+            <td class="ticker">{ticker}</td>
+            <td class="value">{price_cell}</td>
+            <td class="value">{daily_cell}</td>
+            <td class="value">{target_cell}</td>
+            <td class="value">{gap_cell}</td>
+        </tr>
+        """
+    return html
 
 
 def send_email(html_body: str, to_email: str, smtp_user: str, smtp_password: str) -> bool:
