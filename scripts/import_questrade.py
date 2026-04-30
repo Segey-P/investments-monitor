@@ -2,6 +2,7 @@
 
 Usage:
     .venv/bin/python -m scripts.import_questrade <path/to/file.xlsx>
+    .venv/bin/python -m scripts.import_questrade --replace <path/to/file.xlsx>
 """
 from __future__ import annotations
 
@@ -15,10 +16,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from app.db import init_db  # noqa: E402
 from scripts.importers.questrade import QuestradeImporter  # noqa: E402
-from scripts.importers.persist import FileAlreadyImported, persist_result  # noqa: E402
+from scripts.importers.persist import FileAlreadyImported, persist_result, clear_holdings  # noqa: E402
 
 
-def main(path: Path) -> None:
+def main(path: Path, replace: bool = False) -> None:
     if not path.exists():
         sys.exit(f"File not found: {path}")
 
@@ -28,15 +29,29 @@ def main(path: Path) -> None:
         print(f"warning: filename does not look like Questrade — continuing anyway.")
     parsed = importer.parse(path)
 
+    if replace:
+        print("Clearing existing holdings...")
+        clear_holdings(conn)
+
     try:
         result = persist_result(conn, path, parsed)
         print(f"✓ Imported {result['holdings']} holdings across {result['accounts']} accounts.")
         print(f"Cash aggregate set to ${result['cash_total']:,.2f} CAD.")
     except FileAlreadyImported as e:
-        sys.exit(f"File already imported on {e.imported_at}. Skipping.")
+        if replace:
+            sys.exit(f"Unexpected error: {e}")
+        sys.exit(f"File already imported on {e.imported_at}. Use --replace to re-import.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("usage: python -m scripts.import_questrade <file.xlsx>")
-    main(Path(sys.argv[1]))
+    replace = False
+    args = sys.argv[1:]
+
+    if "--replace" in args:
+        replace = True
+        args.remove("--replace")
+
+    if len(args) != 1:
+        sys.exit("usage: python -m scripts.import_questrade [--replace] <file.xlsx>")
+
+    main(Path(args[0]), replace=replace)

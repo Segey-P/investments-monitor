@@ -12,7 +12,7 @@ from app.db import init_db
 from app.fx import get_usdcad
 from scripts.importers.questrade import QuestradeImporter
 from scripts.importers.ibkr import IBKRImporter
-from scripts.importers.persist import FileAlreadyImported, persist_result
+from scripts.importers.persist import FileAlreadyImported, persist_result, clear_holdings
 
 
 def _get_setting(conn, key: str, default: str = "") -> str:
@@ -135,6 +135,16 @@ def _render_import_flow(conn) -> None:
                 st.caption(f"**{r['filename']}** — {r['rows']} holdings on {r['imported_at']}")
         else:
             st.caption("No imports yet.")
+
+        st.markdown("---")
+        st.markdown("#### Clear Holdings")
+        st.warning(
+            "**⚠️ Danger Zone:** Delete all holdings and import history. Use before re-uploading a full portfolio snapshot."
+        )
+        if st.button("Clear all holdings", key="clear_holdings_btn", type="secondary"):
+            clear_holdings(conn)
+            st.success("✓ Holdings and import history cleared.")
+            st.rerun()
 
     # Stage 1: Preview & Ticker Review
     elif flow["stage"] == 1:

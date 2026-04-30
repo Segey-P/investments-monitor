@@ -6,6 +6,15 @@ from pathlib import Path
 from .base import ParseResult
 
 
+def clear_holdings(conn) -> None:
+    """Delete all holdings, accounts, and imports. Preserves settings and manual entries."""
+    with conn:
+        conn.execute("DELETE FROM holdings")
+        conn.execute("DELETE FROM accounts")
+        conn.execute("DELETE FROM imports")
+        conn.execute("UPDATE cash_aggregate SET balance_cad = 0 WHERE id = 1")
+
+
 class FileAlreadyImported(Exception):
     """Raised when the file has already been imported."""
     def __init__(self, filename: str, imported_at: str):
