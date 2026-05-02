@@ -1,5 +1,11 @@
 # Investments Monitor — TODO
 
+## Done
+
+- [x] Email summary logic: fetch live prices and send summary (weekday only)
+- [x] Password recovery: email-based reset flow in auth screen
+- [x] Shared email utility for system notifications
+
 ## Priority 1 — Phase 1 Completion
 
 - [ ] Settings: consolidate to one "Save changes" button per section

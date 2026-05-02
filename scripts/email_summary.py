@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import calcs, prices
 from app.db import init_db
 from app.fx import get_usdcad
+from app.mail import send_email
 from app.theme import PALETTE, fmt_cad, fmt_pct, fmt_ratio
 
 logging.basicConfig(
@@ -46,13 +47,6 @@ def generate_email_html(conn) -> str:
         logger.warning(f"Price fetch failed: {e}. Using cached prices.")
 
     # Computations
-    port = calcs.summarize(holdings_all, fx.rate)
-    unreg_value = calcs.summarize(
-        [h for h in holdings_all if h.account_type == "Unreg"], fx.rate
-    ).portfolio_cad
-    lev = calcs.leverage(conn, port.portfolio_cad, unreg_value)
-    nw = calcs.net_worth(conn, port.portfolio_cad)
-
     # Build movers list (by % price change, excluding cash)
     movers = []
     for h in holdings_all:
@@ -81,10 +75,6 @@ def generate_email_html(conn) -> str:
             .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
             h1 {{ margin: 0 0 8px 0; font-size: 24px; color: #1a1a1a; }}
             .timestamp {{ color: #666; font-size: 12px; margin-bottom: 20px; }}
-            .kpi-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }}
-            .kpi {{ background: #f9f9f9; padding: 12px; border-radius: 4px; border-left: 3px solid #3b82f6; }}
-            .kpi-value {{ font-size: 18px; font-weight: 600; color: #1a1a1a; }}
-            .kpi-label {{ font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }}
             h2 {{ margin: 24px 0 12px 0; font-size: 16px; color: #1a1a1a; border-bottom: 1px solid #e5e5e5; padding-bottom: 8px; }}
             table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
             th {{ background: #f9f9f9; padding: 8px; text-align: left; font-weight: 600; color: #666; border-bottom: 1px solid #e5e5e5; }}
@@ -216,46 +206,28 @@ def _watchlist_html(rows: list) -> str:
     return html
 
 
-def send_email(html_body: str, to_email: str, smtp_user: str, smtp_password: str) -> bool:
-    """Send email via SMTP."""
-    try:
-        logger.info(f"Sending email to {to_email}...")
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"Portfolio Summary — {datetime.now().strftime('%Y-%m-%d')}"
-        msg["From"] = smtp_user
-        msg["To"] = to_email
-
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(smtp_user, smtp_password)
-            server.sendmail(smtp_user, [to_email], msg.as_string())
-
-        logger.info("✓ Email sent successfully")
-        return True
-    except Exception as e:
-        logger.error(f"Email send failed: {e}")
+def is_market_open() -> bool:
+    """Check if market is likely open (Weekday and not holiday)."""
+    # For now, just check weekends.
+    now = datetime.now()
+    if now.weekday() >= 5:  # Saturday=5, Sunday=6
         return False
+
+    # Optional: Simple holiday check could go here
+    return True
 
 
 def main() -> int:
     """Generate and send portfolio summary email."""
     try:
-        # Get credentials from environment
-        smtp_user = os.getenv("GMAIL_USER")
-        smtp_password = os.getenv("GMAIL_PASSWORD")
-        to_email = os.getenv("GMAIL_RECIPIENT", "sergey.pochikovskiy@gmail.com")
-
-        if not smtp_user or not smtp_password:
-            logger.error(
-                "Missing GMAIL_USER or GMAIL_PASSWORD env vars. "
-                "Set them: export GMAIL_USER=... && export GMAIL_PASSWORD=..."
-            )
-            return 1
+        if not is_market_open() and "--force" not in sys.argv:
+            logger.info("Market is closed (weekend). Skipping email. Use --force to send anyway.")
+            return 0
 
         conn = init_db()
         html = generate_email_html(conn)
-        return 0 if send_email(html, to_email, smtp_user, smtp_password) else 1
+        subject = f"Portfolio Summary — {datetime.now().strftime('%Y-%m-%d')}"
+        return 0 if send_email(subject, html) else 1
 
     except Exception as e:
         logger.error(f"Email routine failed: {e}", exc_info=True)

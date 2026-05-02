@@ -7,10 +7,13 @@ Session state keys:
 """
 from __future__ import annotations
 
+import random
 import time
 
 import bcrypt
 import streamlit as st
+
+from app.mail import send_email
 
 
 def _get_password_hash(conn) -> str | None:
@@ -18,6 +21,15 @@ def _get_password_hash(conn) -> str | None:
         "SELECT value FROM settings WHERE key = 'password_hash'"
     ).fetchone()
     return row["value"] if row else None
+
+
+def _update_password(conn, new_password: str) -> None:
+    hashed = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+    with conn:
+        conn.execute(
+            "UPDATE settings SET value = ? WHERE key = 'password_hash'",
+            (hashed.decode("utf-8"),),
+        )
 
 
 def _get_timeout_min(conn) -> int:
@@ -221,17 +233,78 @@ def tick(conn) -> bool:
         )
         st.stop()
 
-    st.markdown("### Sign in")
-    with st.form("login_form", clear_on_submit=False):
-        pw = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Unlock")
-    if submitted:
-        if bcrypt.checkpw(pw.encode("utf-8"), stored.encode("utf-8")):
-            st_auth["ok"] = True
-            st_auth["last_activity"] = now
+    ss.setdefault("auth_reset", {"stage": "login", "otp": None})
+    reset_state = ss["auth_reset"]
+
+    if reset_state["stage"] == "login":
+        st.markdown("### Sign in")
+        with st.form("login_form", clear_on_submit=False):
+            pw = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Unlock")
+        if submitted:
+            if bcrypt.checkpw(pw.encode("utf-8"), stored.encode("utf-8")):
+                st_auth["ok"] = True
+                st_auth["last_activity"] = now
+                st.rerun()
+            else:
+                st.error("Incorrect password.")
+
+        if st.button("Forgot password?"):
+            otp = f"{random.randint(100000, 999999)}"
+            reset_state["otp"] = otp
+            reset_state["stage"] = "verify"
+            
+            subject = "Password Reset Code — Investments Monitor"
+            body = f"""
+            <html>
+            <body style="font-family: sans-serif; padding: 20px;">
+                <h2>Password Reset Request</h2>
+                <p>Use the following code to reset your password:</p>
+                <div style="font-size: 24px; font-weight: bold; background: #f0f0f0; padding: 10px; border-radius: 4px; display: inline-block;">
+                    {otp}
+                </div>
+                <p>If you didn't request this, you can safely ignore this email.</p>
+            </body>
+            </html>
+            """
+            if send_email(subject, body):
+                st.info("A reset code has been sent to your email.")
+                st.rerun()
+            else:
+                st.error("Failed to send reset email. Check GMAIL_USER/GMAIL_PASSWORD env vars.")
+
+    elif reset_state["stage"] == "verify":
+        st.markdown("### Verify Code")
+        with st.form("verify_form"):
+            code = st.text_input("Enter 6-digit code")
+            if st.form_submit_button("Verify"):
+                if code == reset_state["otp"]:
+                    reset_state["stage"] = "new_password"
+                    st.rerun()
+                else:
+                    st.error("Invalid code.")
+        if st.button("Back to login"):
+            reset_state["stage"] = "login"
             st.rerun()
-        else:
-            st.error("Incorrect password.")
+
+    elif reset_state["stage"] == "new_password":
+        st.markdown("### Set New Password")
+        with st.form("new_pw_form"):
+            new_pw = st.text_input("New Password", type="password")
+            confirm_pw = st.text_input("Confirm Password", type="password")
+            if st.form_submit_button("Reset Password"):
+                if len(new_pw) < 8:
+                    st.error("Password must be at least 8 characters.")
+                elif new_pw != confirm_pw:
+                    st.error("Passwords do not match.")
+                else:
+                    _update_password(conn, new_pw)
+                    st.success("Password reset successful!")
+                    reset_state["stage"] = "login"
+                    st.rerun()
+        if st.button("Cancel"):
+            reset_state["stage"] = "login"
+            st.rerun()
 
     st.markdown("---")
     _pre_auth_summary(conn)
